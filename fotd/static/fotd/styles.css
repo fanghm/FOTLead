@@ -1,0 +1,121 @@
+
+/* 主内容区域样式 */
+.main-content {
+  /*display: flex;
+  #margin-left: 200px;  / 距离侧边栏的距离，与侧边栏的宽度相同 */
+  padding: 20px; /* 内边距 */
+  height: calc(100vh - 50px); /* 屏幕高度减去导航栏高度 */
+  overflow-y: auto; /* 如果内容超过主内容区域高度，显示滚动条 */
+}
+
+.navbar {
+  background-color: #4da0ff; /* 品牌色，亮蓝色 */
+  color: #fff; /* 白色文字 */
+  padding: 10px 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  margin: 0;
+}
+
+.add-feature-link {
+  background-color: #4da0ff; /* White background */
+  color: #fff; /* Brand color, bright blue */
+	border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.feather {
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
+  margin-right: 5px; /* 可以根据需要调整图标与文字之间的间距 */
+}
+
+.add-feature-link:hover {
+  background-color: #fff; /* Brand color, bright blue */
+  color: #4da0ff; /* White text */
+}
+
+/* Sidebar styles */
+.sidebar {
+	display: none;
+  width: 200px; /* 侧边栏宽度 */
+  /*height: 800px; / 屏幕高度减去导航栏高度 */
+  position: fixed; /* 固定定位，使侧边栏保持在屏幕上 */
+  top: 94px; /* 导航栏高度 */
+  left: 10; /* 距离屏幕左侧的位置 */
+  background-color: #fff; /* 侧边栏背景色 */
+  overflow-y: auto; /* 如果内容超过侧边栏高度，显示滚动条 */
+}
+
+.sidebar-content {
+  position: relative;
+}
+
+.close-sidebar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+}
+
+.feature-details {
+	display: none;
+  margin-left: 520px; /* Adjust margin to accommodate sidebar */
+  padding: 20px;
+}
+
+.feature-details h2 {
+  margin-top: 0;
+}
+
+#feature-table td:nth-child(1),
+#feature-table td:nth-child(3) {
+  text-align: center;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  /*border: none; / 移除表格边框 */
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+th {
+  background-color: #4da0ff; /* 亮蓝色 */
+  color: #fff; /* 白色文字 */
+}
+
+tr:nth-child(even) {
+  background-color: #f0f8ff; /* 亮蓝色的淡色系 */
+}
+
+tr:hover {
+  background-color: #d9e6ff; /* 亮蓝色的浅色系 */
+}
+
+h2 {
+  background-color: #4da0ff; /* 亮蓝色 */
+  color: #fff; /* 白色文字 */
+  padding: 10px;
+  margin-top: 0;
+}
+
+
+

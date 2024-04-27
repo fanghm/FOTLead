@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<form>
+    {% csrf_token %}
+    <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;">
+    <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
+    <button type="submit">Add</button>
+</form>
+
+{% if tasks %}
+    <ul>
+    {% for task in tasks %}
+        <li><a href="/task/{{ task.id }}/">{{ task.title }}</a></li>
+        <form style="margin-left: 40px;" data-task-id="{{ task.id }}">
+            {% csrf_token %}
+            <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
+            <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
+            <button type="submit">Add</button>
+        </form>
+        {% if task.statusUpdates %}
+            <ul>
+                <li id="task_{{task.id}}_first_item" style="display: none;"></li>
+                {% for statusUpdate in task.statusUpdates %}
+                    <li>{{ statusUpdate }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No ongoing tasks.</p>
+{% endif %}
+{% endblock %}
+
+{% block bottom %}
+    <script>
+        $(document).ready(function(){
+            $("form").on('submit', function(event){
+                event.preventDefault(); // 阻止表单的默认提交行为
+
+                var taskId = $(this).attr('data-task-id');
+                var date_str = $(this).find('input[name="date"]').val();
+                
+                status_obj = $(this).find('input[name="status"]');
+                var update_text = status_obj.val(); // 获取状态更新
+                status_obj.val(''); // 重置status input box中的内容
+
+                $.ajax({
+                    url: '/ajax_statusupdate/' + taskId + '/',
+                    type: 'POST',
+                    data: {
+                        'date_str': date_str,
+                        'update_text': update_text
+                    },
+                    success: function(response){
+                        // 在任务下方添加新的状态更新
+                        $('<li>' + response + '</li>').insertAfter('#task_' + taskId + '_first_item');
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

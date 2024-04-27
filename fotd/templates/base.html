@@ -1,0 +1,46 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOTLead Dashboard</title>
+
+    <link rel="stylesheet" href="{% static 'fotd/bootstrap.min.css' %}">
+    <style>
+      #user-tools {
+          text-align: right;
+          padding: 0 10px;
+      float: right;
+      text-transform: uppercase;
+      }
+    </style>
+
+    {% block css %} {% endblock %}
+    
+    {% block script %}
+      <script src="{% static 'fotd/jquery.min.js' %}"></script>
+    {% endblock %}
+  </head>
+
+  <body>
+    <div id="header">
+      <div id="user-tools">Welcome,
+        {% if user.is_authenticated %}
+          <strong>{{user.username}}</strong>!
+          <a href="{% url 'logout' %}">Logout</a>
+        {% else %}
+          <strong>Guest</strong>!
+        {% endif %}
+      </div>
+    </div>
+    
+    <div id="content">
+      {% block content %} {% endblock %}
+    </div>
+    
+    {% block bottom %} {% endblock %}
+    
+  </body>
+</html>

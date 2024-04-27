@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block css %}
+  <link rel="stylesheet" href="{% static 'fotd/styles.css' %}">	
+  <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
+{% endblock %}
+
+{% block content %}
+  <nav class="navbar">
+    <div class="container">
+      <h1 class="logo">My Dashboard</h1>
+      <a href="#" class="add-feature-link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="16"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+      </a>
+    </div>
+  </nav>
+  
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <!-- 侧边栏内容 -->
+    <h2>Features</h2>
+    <ul id="feature-list">
+      <!-- 产品列表项 -->
+    </ul>
+    <!-- 关闭侧边栏按钮 -->
+    <span class="close-sidebar">&times;</span>
+    <!--button class="close-sidebar">Close</button-->
+  </aside>
+  
+  <!-- 主内容区域 -->
+  <main class="main-content">
+    <!-- 产品详细信息 -->
+    <div id="feature-details">
+      <!-- 产品详细信息内容 -->
+    </div>
+
+    <!-- 表格 -->
+    <table id="feature-table">
+      <thead>
+        <tr>
+          <th data-resizable-column-id="release">Release</th>
+          <th data-resizable-column-id="id">ID</th>
+          <th data-resizable-column-id="name">Name</th>
+          <th data-resizable-column-id="priority">Priority</th>
+          <th data-resizable-column-id="milestone">Milestone</th>
+          <th data-resizable-column-id="risk">Risk</th>
+          <th data-resizable-column-id="details">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Table content will be dynamically generated here -->
+        {% for f in features %}
+          <tr>
+            <td>{{ f.release }}</td>
+            <td>{{ f.id }}</td>
+            <td>{{ f.name }}</td>
+            <td>{{ f.priority }}</td>
+            <td>{{ f.milestone }}</td>
+            <td>{{ f.risk }}</td>
+            <td><a href="{% url 'fotd:detail' f.id %}">View Details</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+{% endblock %}
+
+{% block bottom %}
+  <script src="{% static 'fotd/jquery-ui.min.js' %}"></script>
+  <script src="{% static 'fotd/sortable.js' %}"></script>
+{% endblock %}
