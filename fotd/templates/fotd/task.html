@@ -2,13 +2,6 @@
 
 {% block content %}
 
-<form>
-    {% csrf_token %}
-    <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;">
-    <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
-    <button type="submit">Add</button>
-</form>
-
 {% if tasks %}
     <ul>
     {% for task in tasks %}
