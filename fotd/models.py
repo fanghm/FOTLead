@@ -53,11 +53,13 @@ class Feature(models.Model):
 
     # links
     fusion_link = models.CharField(max_length=300, verbose_name='JIRA Structure', help_text='Link to the JIRA Structure')
-    #ca_link = models.CharField(max_length=100, verbose_name='CA Item List', help_text='Link to the CA Item List in Fusion')
-    #gantt_link = models.CharField(max_length=100, blank=True, verbose_name='Gantt Chart', help_text='Link to the Gantt Chart')
+    fp_link = models.CharField(max_length=100, blank=True, verbose_name='FP Link', help_text='Link to the FP')
+    cfam_link = models.CharField(max_length=100, blank=True, verbose_name='CFAM Link', help_text='Link to the CFAM')
+    gantt_link = models.CharField(max_length=100, blank=True, verbose_name='Gantt Chart', help_text='Link to the Gantt Chart')
     rep_link = models.CharField(max_length=100, blank=True, verbose_name='Reporting Portal', help_text='Link to the Reporting Portal')
     
-    risk = models.CharField(max_length=6, choices=RISK_LEVELS)
+    risk = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
+    text2 = models.CharField(max_length=255, blank=True)
     desc = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -65,6 +67,18 @@ class Feature(models.Model):
         return self.release + ' ' + self.id
     class Meta:
         ordering = ["release", 'priority']
+
+# Feature updates
+# All manually added updates are key events, while automatically added updates (like a task done, risk change) are regular updates
+class FeatureUpdate(models.Model):
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    update_date = models.DateField(default=datetime.date.today)
+    update_text = models.TextField()
+    is_key = models.BooleanField(default=False, verbose_name='Is key event?')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.update_date.strftime("%m/%d")}: {self.update_text}'
 
 class FeatureRoles(models.Model):
     feature = models.OneToOneField(Feature, on_delete=models.CASCADE, primary_key=True,)
@@ -99,16 +113,17 @@ class Task(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
     owner = models.CharField(max_length=100)
-    status = models.CharField(max_length=11, choices=TASK_STATUS)
+    due = models.DateField(default=datetime.date.today() + datetime.timedelta(days=7))
+    status = models.CharField(max_length=11, default='Ongoing', choices=TASK_STATUS)
     mail = models.CharField(max_length=50, blank=True)
     chat = models.CharField(max_length=50, blank=True)
     meeting = models.CharField(max_length=50, blank=True)
-    #updates = models.TextField(blank=True, verbose_name='Status Update', help_text='Format: y/m/d: xxx')
+    
     relate_to = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.feature} - {self.title}'
+        return f'{self.title} - {self.owner}, due {self.due.strftime("%m/%d")}'
 
 class StatusUpdate(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
