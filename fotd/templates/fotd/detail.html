@@ -9,12 +9,21 @@
 
   <div  class="section">
     <div class="header">
-      <h2>Status Updates</h2>
-      <button class="addUpdateBtn">&#10009;</button>      
+      <div style="display: flex; align-items: center;">
+        <h2>Status Updates</h2>
+        <button class="addUpdateBtn">&#10009;</button>
+      </div>
     </div>
 
     <div  class="content">
       <ul>
+        <form class="addStatusForm" style="margin-left: 40px;display:none;">
+          {% csrf_token %}
+          <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
+          <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
+          <button type="submit">Add</button>
+        </form>
+
         {% if updates %}
           {% for statusUpdate in updates %}
             <li>{{ statusUpdate }}</li>
@@ -24,20 +33,16 @@
         {% endif %}
         
         <li id="feature_update_hidden_placeholder" style="display: none;"></li>
-        <form class="addStatusForm" style="margin-left: 40px;display:none;">
-          {% csrf_token %}
-          <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
-          <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
-          <button type="submit">Add</button>
-        </form>
       </ul>
   </div>
 
   <br>
   <div  class="section">
     <div class="header">
-      <h2>Tasks</h2>
-      <button class="addTaskBtn">&#10009;</button>      
+      <div style="display: flex; align-items: center;">
+        <h2>Tasks</h2>
+        <button class="addTaskBtn">&#10009;</button>
+      </div>
     </div>
 
     <div  class="content">
@@ -62,7 +67,7 @@
           <li id="task_list_hidden_placeholder" style="display: none;"></li>
 
           {% for task in tasks %}
-            <li><a href="/task/{{ task.id }}/">{{ task.title }}</a></li>
+            <li><a href="/task/{{ task.id }}/">{{ task.title }}</a> - {{task.owner}} | {{task.due}}</li>
             <form class="addTaskStatusForm" style="margin-left: 40px;" data-task-id="{{ task.id }}">
               {% csrf_token %}
               <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
@@ -101,41 +106,44 @@
         event.preventDefault(); // 阻止表单的默认提交行为
 
         var featureId = '{{ feature.id }}';
-        var title = $(this).find('input[name="title"]').val(); 
-        var owner = $(this).find('input[name="onwer"]').val();
-        var date_str = $(this).find('input[name="due"]').val();
-        
-        var mail = $(this).find('input[name="mail"]').val();        
-        var chat = $(this).find('input[name="chat"]').val();
-        var meeting = $(this).find('input[name="meeting"]').val();
+        var formData = {};
+        var form = $(this);
 
-        $(this).find('input[name="title"]').val('');
+        $(this).find('input').each(function() {
+          var name = $(this).attr('name');
+          var value = $(this).val().trim();
+          if(value != '') {
+            formData[name] = value;
+            if(name != 'due') $(this).val('');
+          }
+        });
 
         $.ajax({
           url: '/ajax_task_add/' + featureId + '/',
           type: 'POST',
-          data: {
-            'title': title,
-            'owner': owner,
-            'date_str': date_str,
-            'mail': mail,
-            'chat': chat,
-            'meeting': meeting
-          },
+          data: formData,
           success: function(response){
-            $('<li>' + response + '</li>').insertAfter('#task_list_hidden_placeholder');
+            var dueDate = new Date(response.due);
+            var formattedDate = (dueDate.getMonth() + 1) + '/' + dueDate.getDate();
+            $('<li><a href="/task/' + response.id + '/">' + response.title +'</a> - ' + response.owner
+               + ' | ' + formattedDate + '</li>').insertAfter('#task_list_hidden_placeholder');
+            
             $('#feature_update_empty').hide();
+            form.hide();
+            $('.addTaskBtn').show()
           }
         });
       });
 
+      // Feature Status Update
       $('.addUpdateBtn').click(function(){
         $(this).hide();
         $('.addStatusForm').show();
       });
 
       $(".addStatusForm").on('submit', function(event){
-        event.preventDefault(); // 阻止表单的默认提交行为
+        event.preventDefault();        
+        var form = $(this);
 
         var featureId = '{{ feature.id }}';
         var date_str = $(this).find('input[name="date"]').val();
@@ -152,10 +160,13 @@
           success: function(response){
             $('<li>' + response + '</li>').insertAfter('#feature_update_hidden_placeholder');
             $('#feature_update_empty').hide();
+            form.hide();
+            $('.addUpdateBtn').show()
           }
         });
       });
 
+      // Task Status Update
       $(".addTaskStatusForm").on('submit', function(event){
         event.preventDefault(); // 阻止表单的默认提交行为
 

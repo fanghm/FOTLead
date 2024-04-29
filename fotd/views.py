@@ -5,6 +5,12 @@ from datetime import date, datetime
 import logging
 from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework import serializers
+
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = '__all__'
 
 #@login_required
 def index(request):
@@ -49,20 +55,22 @@ def ajax_feature_update(request, fid):
 
 @csrf_exempt
 def ajax_task_add(request, fid):
-    feature = Feature.objects.get(id=fid)
+    if request.POST['title'] == '' or request.POST['owner'] == '':
+        return HttpResponse('Title and Owner are required')
 
     if request.method == 'POST':
-        title = request.POST['title']
-        owner = request.POST.get('owner', 'FOTL')
-        mail = request.POST['mail']
-        chat = request.POST['chat']
-        meeting = request.POST['meeting']
 
-        date_str = request.POST['date_str']
-        due = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-        update = Task.objects.create(feature=feature, title=title, owner=owner, mail=mail, chat=chat, meeting=meeting, due=due)
-        return HttpResponse(update)
+        task_data = request.POST.dict()
+        if 'csrfmiddlewaretoken' in task_data:
+            del task_data['csrfmiddlewaretoken']
+        
+        task_data['feature'] = Feature.objects.get(id=fid)
+        task_data['due'] = datetime.strptime(task_data['due'], "%Y-%m-%d").date()
+        
+        task = Task.objects.create(**task_data)
+        serializer = TaskSerializer(task)
+        print(serializer.data)
+        return JsonResponse(serializer.data)
     else:
         return HttpResponse('No POST data')
 
