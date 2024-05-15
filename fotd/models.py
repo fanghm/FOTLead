@@ -3,6 +3,7 @@ from django.core.validators import MaxValueValidator
 import datetime
 
 MILESTONE_CHOICES = [
+    ('N/A',    'N/A'),
     ('I1 50%',    'I1 50%'),
     ('I1',        'I1'),
     ('I1.1',      'I1.1'),
@@ -59,7 +60,7 @@ class Feature(models.Model):
     rep_link = models.CharField(max_length=100, blank=True, verbose_name='Reporting Portal', help_text='Link to the Reporting Portal')
     
     risk = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
-    text2 = models.CharField(max_length=255, blank=True)
+    text2 = models.CharField(max_length=512, blank=True)
     desc = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -78,7 +79,7 @@ class FeatureUpdate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.update_date.strftime("%m/%d")}: {self.update_text}'
+        return f'{self.feature_id} | {self.update_date.strftime("%m/%d")}: {self.update_text}'
 
 class FeatureRoles(models.Model):
     feature = models.OneToOneField(Feature, on_delete=models.CASCADE, primary_key=True,)
@@ -92,7 +93,7 @@ class FeatureRoles(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return '%s FOT Lead: %s' % (self.feature_id, self.feature.fot_lead)
+        return '%s | FOT Lead: %s' % (self.feature_id, self.fot_lead)
 
     class Meta:
         verbose_name_plural = "FeatureRoles"
@@ -107,12 +108,13 @@ class TeamMember(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.team
+        return f'{self.feature_id} | {self.team} - {self.role}: {self.name}'
 
 class Task(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
-    owner = models.CharField(max_length=100)
+    owner = models.CharField(max_length=20)
+    contact = models.CharField(max_length=100, blank=True)
     due = models.DateField(default=datetime.date.today() + datetime.timedelta(days=7))
     status = models.CharField(max_length=11, default='Ongoing', choices=TASK_STATUS)
     mail = models.CharField(max_length=50, blank=True)
@@ -123,7 +125,7 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.title} - {self.owner}, due {self.due.strftime("%m/%d")}'
+        return f'{self.feature_id} | {self.title} - {self.owner}, due {self.due.strftime("%m/%d")}'
 
 class StatusUpdate(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
@@ -144,3 +146,11 @@ class Link(models.Model):
     def __str__(self):
         #return f'{self.name}: {self.url}'
         return f'<a href="{self.url}">{self.name}</a>'
+
+class Sprint(models.Model):
+    fb = models.CharField(max_length=6)
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    def __str__(self):
+        return f'{self.fb}: {self.start_date.strftime("%m/%d")} - {self.end_date.strftime("%m/%d")}'

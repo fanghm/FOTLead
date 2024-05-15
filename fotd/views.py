@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.shortcuts import render
-from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link
-from datetime import date, datetime
+from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint
+from datetime import date, datetime, timedelta
 import logging
 from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -14,8 +14,16 @@ class TaskSerializer(serializers.ModelSerializer):
 
 #@login_required
 def index(request):
-    features = Feature.objects.all()  # Fetch all data from the Feature table
-    context = {'features': features}  # Create a context dictionary with the fetched data
+    features = Feature.objects.order_by('release', 'id')
+
+    request.session['today'] = date.today().strftime('%Y/%m/%d')
+    request.session['wk'] = f'Wk{date.today().isocalendar()[1]}.{date.today().weekday() +1}'
+    request.session['fb'] = _get_fb()
+
+    context = {
+        'features': features,
+        }
+
     return render(request, 'fotd/index.html', context)
 
 def detail(request, fid):
@@ -69,7 +77,8 @@ def ajax_task_add(request, fid):
         
         task = Task.objects.create(**task_data)
         serializer = TaskSerializer(task)
-        print(serializer.data)
+        
+        #print(serializer.data)
         return JsonResponse(serializer.data)
     else:
         return HttpResponse('No POST data')
@@ -90,3 +99,26 @@ def ajax_task_update(request, tid):
         return HttpResponse(update)
     else:
         return HttpResponse('No POST data')
+
+def fb(request):
+    sprints = Sprint.objects.all()
+    context = {
+        'sprints': sprints,
+        'today': date.today().strftime('%Y-%m-%d')
+        }
+    return render(request, 'fotd/fb.html', context)
+
+def _get_fb():
+    today= date.today()
+    start_fb = f'FB{str(today.year)[-2:]}{today.month*2:02d}'
+    sprints = Sprint.objects.filter(fb__gte=start_fb).order_by('fb')[:3]
+    print(sprints)
+    print(start_fb)
+
+    for sprint in sprints:
+        if (today >= sprint.start_date and today <= sprint.end_date):
+            if (today >= sprint.start_date + timedelta(days=7)):
+                return sprint.fb + '.2'
+            else:
+                return sprint.fb + '.1'
+    return 'N/A'

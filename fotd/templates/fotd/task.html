@@ -5,7 +5,7 @@
 {% if tasks %}
     <ul>
     {% for task in tasks %}
-        <li><a href="/task/{{ task.id }}/">{{ task.title }}</a></li>
+        <li style="margin-top: 200px; margin-bottom: 20px;"><a href="/task/{{ task.id }}/">{{ task.title }}</a></li>
         <form style="margin-left: 40px;" data-task-id="{{ task.id }}">
             {% csrf_token %}
             <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">

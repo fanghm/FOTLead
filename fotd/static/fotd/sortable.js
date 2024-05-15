@@ -33,7 +33,7 @@ $(document).ready(function() {
       // Save the new order of rows to local storage
       var newOrder = [];
       $(this).find('tr').each(function() {
-        newOrder.push($(this).find('td:first-child').text());
+        newOrder.push($(this).find('td:nth-child(2)').text());
       });
       localStorage.setItem('tableRowsOrder', JSON.stringify(newOrder));
     }
@@ -41,16 +41,24 @@ $(document).ready(function() {
 
   // Load table rows order from local storage and adjust table rows accordingly
   var savedTableRowsOrder = localStorage.getItem('tableRowsOrder');
+  console.log(savedTableRowsOrder);
+
   if (savedTableRowsOrder) {
     savedTableRowsOrder = JSON.parse(savedTableRowsOrder);
     var rows = tbody.find('tr').get();
     tbody.empty();
     $.each(savedTableRowsOrder, function(index, id) {
       var row = rows.find(function(row) {
-        return $(row).find('td:first-child').text() === id;
+        return $(row).find('td:nth-child(2)').text() === id;
       });
       tbody.append(row);
     });
   }	
 	
+});
+
+$(document).keydown(function(e) {
+  if (e.ctrlKey && e.which === 116) { // ctrl + f5
+    localStorage.removeItem('tableRowsOrder');
+  }
 });

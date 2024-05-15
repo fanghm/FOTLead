@@ -163,3 +163,5 @@ cython_debug/
 # personal
 django.md
 ideas.md
+init_db.py
+init/*.html

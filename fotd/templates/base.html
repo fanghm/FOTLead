@@ -1,5 +1,5 @@
 {% load static %}
-
+{% url 'fotd:fb' as fb_url %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -10,30 +10,39 @@
     <link rel="stylesheet" href="{% static 'fotd/bootstrap.min.css' %}">
     <style>
       #user-tools {
-          text-align: right;
-          padding: 0 10px;
-      float: right;
-      text-transform: uppercase;
+        background-color: #fff;
+        position: absolute;
+        text-align: right;
+        padding: 0 10px;
+        text-transform: uppercase;
+        z-index: 1000;
+        top: 0;
+        right: 0;
       }
     </style>
 
     {% block css %} {% endblock %}
+        
+    <script src="{% static 'fotd/jquery.min.js' %}"></script>
     
-    {% block script %}
-      <script src="{% static 'fotd/jquery.min.js' %}"></script>
-    {% endblock %}
+    {% block script %} {% endblock %}
   </head>
 
   <body>
-    <div id="header">
-      <div id="user-tools">Welcome,
-        {% if user.is_authenticated %}
-          <strong>{{user.username}}</strong>!
-          <a href="{% url 'logout' %}">Logout</a>
-        {% else %}
-          <strong>Guest</strong>!
-        {% endif %}
-      </div>
+    <div id="user-tools">
+      {{ request.session.today }}&nbsp;|&nbsp;      
+      {% if request.path == fb_url %}
+        <span>{{ request.session.fb }}</span>
+      {% else %}
+        <a href="{{ fb_url }}">{{ request.session.fb }}</a>
+      {% endif %}
+      &nbsp;|&nbsp;{{ request.session.wk }} - Welcome,
+      {% if user.is_authenticated %}
+        <strong>{{user.username}}</strong>!
+        <a href="{% url 'logout' %}">Logout</a>
+      {% else %}
+        <strong>Guest</strong>!
+      {% endif %}
     </div>
     
     <div id="content">

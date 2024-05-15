@@ -1,8 +1,9 @@
 from django.contrib import admin
-from .models import Feature, FeatureRoles, TeamMember, Task, StatusUpdate, Link
+from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link
 
 # Register your models here.
 admin.site.register(Feature)
+admin.site.register(FeatureUpdate)
 admin.site.register(FeatureRoles)
 admin.site.register(TeamMember)
 admin.site.register(Task)

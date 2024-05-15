@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block script %}
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+{% endblock %}
+
+{% block css %}
+  <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
+  <style>
+    .highlight {
+        background-color: yellow;
+    }
+    .container {
+      width: 80%;
+      display: flex;
+      align-items: flex-start;
+      margin-top: 30px;
+    }
+    table {
+      margin-left: auto;
+      margin-right: auto;
+      border: 1px solid black;
+      text-align: center;
+    }
+    #datepicker {
+      margin-left: 0;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div>
+    <a style="text-align: right;" href="/">Back</a>
+  </div>
+  <h1 style="text-align: center;">FB Dates</h1>
+
+  <div class="container">
+    <table>
+        <thead>
+            <tr>
+                <th>FB</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sprint in sprints %}
+                <tr {% if today >= sprint.start_date|date:"Y-m-d" and today <= sprint.end_date|date:"Y-m-d" %} class="highlight" {% endif %}>
+                    <td>{{ sprint.fb }}</td>
+                    <td class="date" data-date="{{ sprint.start_date|date:"Y/m/d" }}">{{ sprint.start_date|date:"m/d" }}</td>
+                    <td class="date" data-date="{{ sprint.end_date|date:"Y/m/d" }}">{{ sprint.end_date|date:"m/d" }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="datepicker"></div>
+  </div>
+
+  <script>
+  $(function() {
+    var startDate, endDate;
+  
+    $(".date").click(function() {
+      var dateStr = $(this).data("date");
+      console.log(dateStr);
+  
+      // 如果点击的是开始日期，那么更新 startDate
+      if ($(this).is(':nth-child(2)')) {
+        startDate = new Date(dateStr);
+        endDate = new Date(new Date(startDate).setDate(startDate.getDate() + 13));
+      }
+  
+      // 如果点击的是结束日期，那么更新 endDate
+      if ($(this).is(':nth-child(3)')) {
+        endDate = new Date(dateStr);
+        startDate = new Date(new Date(endDate).setDate(endDate.getDate() - 13));
+      }
+  
+      $("#datepicker").datepicker("destroy").datepicker({
+        format: 'yyyy/mm/dd',
+        beforeShowDay: function(date) {
+          if (startDate && endDate) {
+            return [(date >= startDate && date <= endDate), 'highlight', ''];
+          } else {
+            return [true, '', ''];
+          }
+        }
+      }).datepicker("setDate", new Date(dateStr + ' 00:00')).datepicker("show");
+    });
+  });
+  </script>
+{% endblock %}

@@ -20,36 +20,20 @@
     </div>
   </nav>
   
-  <!-- 侧边栏 -->
-  <aside class="sidebar">
-    <!-- 侧边栏内容 -->
-    <h2>Features</h2>
-    <ul id="feature-list">
-      <!-- 产品列表项 -->
-    </ul>
-    <!-- 关闭侧边栏按钮 -->
-    <span class="close-sidebar">&times;</span>
-    <!--button class="close-sidebar">Close</button-->
-  </aside>
-  
-  <!-- 主内容区域 -->
   <main class="main-content">
-    <!-- 产品详细信息 -->
-    <div id="feature-details">
-      <!-- 产品详细信息内容 -->
-    </div>
-
     <!-- 表格 -->
     <table id="feature-table">
       <thead>
         <tr>
           <th data-resizable-column-id="release">Release</th>
-          <th data-resizable-column-id="id">ID</th>
-          <th data-resizable-column-id="name">Name</th>
+          <th data-resizable-column-id="id">Feature ID</th>
+          <th data-resizable-column-id="name">Feature Name</th>
           <th data-resizable-column-id="priority">Priority</th>
           <th data-resizable-column-id="milestone">Milestone</th>
+          <th data-resizable-column-id="phase">Phase</th>
           <th data-resizable-column-id="risk">Risk</th>
-          <th data-resizable-column-id="details">Details</th>
+          <th data-resizable-column-id="links">Links</th>
+          <th data-resizable-column-id="action">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -61,8 +45,17 @@
             <td>{{ f.name }}</td>
             <td>{{ f.priority }}</td>
             <td>{{ f.milestone }}</td>
-            <td>{{ f.risk }}</td>
-            <td><a href="{% url 'fotd:detail' f.id %}">View Details</a></td>
+            <td>{{ f.phase }}</td>
+            <td style="text-align: center;">
+              <div style="background-color: {{ f.risk }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;"></div>
+            </td>
+            <td>
+              {% if 'http' in f.fusion_link %}
+                <a href="{{ f.fusion_link }}" target="_blank"><img src="{% static 'pix/jira.png' %}" alt="Jira" width="32" height="32"></a>&nbsp;
+              {% endif %}
+              <a href="{{ f.gantt_link }}" target="_blank"><img src="{% static 'pix/gantt.svg' %}" alt="Gantt" width="32" height="32"></a>&nbsp;
+            </td>
+            <td><a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a></td>
           </tr>
         {% endfor %}
       </tbody>
