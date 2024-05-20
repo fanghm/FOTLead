@@ -4,6 +4,25 @@
 {% block css %}
   <link rel="stylesheet" href="{% static 'fotd/styles.css' %}">	
   <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
+  <style>
+    .badge {
+      position: relative;
+      display: inline-block;
+      padding: 10px 20px;
+    }
+    
+    .badge::after {
+      content: attr(data-count);
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: blue;
+      color: white;
+      border-radius: 50%;
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -38,7 +57,7 @@
       </thead>
       <tbody>
         <!-- Table content will be dynamically generated here -->
-        {% for f in features %}
+        {% for f, task_count in features_with_task_count %}
           <tr>
             <td>{{ f.release }}</td>
             <td>{{ f.id }}</td>
@@ -55,15 +74,62 @@
               {% endif %}
               <a href="{{ f.gantt_link }}" target="_blank"><img src="{% static 'pix/gantt.svg' %}" alt="Gantt" width="32" height="32"></a>&nbsp;
             </td>
-            <td><a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a></td>
+            <td>
+              <span class="badge" data-count="{{ task_count }}">
+              <a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a>
+              </span>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   </main>
+  
+  <input type="text" id="prId" placeholder="Enter PR#" ><!--autofocus-->
+  <input type="text" id="featureId" placeholder="Enter Feature/CNI ID#" >
+
 {% endblock %}
 
 {% block bottom %}
   <script src="{% static 'fotd/jquery-ui.min.js' %}"></script>
   <script src="{% static 'fotd/sortable.js' %}"></script>
+
+  <script>
+    $(document).ready(function() {
+      $('#prId').keypress(function(event) {
+        var keycode = (event.keyCode ? event.keyCode : event.which);
+        if(keycode == '13'){
+          var val = $(this).val().trim();
+          if (!isNaN(val)) { // if all numbers
+            val = val.padStart(6, '0');
+            val = 'PR' + val;
+          } else {
+            val = val.substring(0, 8);
+          }
+
+          var url = 'https://pronto.ext.net.nokia.com/pronto/problemReportSearch.html?freeTextdropDownID=prId&searchTopText=' + val;
+          window.open(url, '_blank'); 
+        }
+      });
+
+    
+    $('#featureId').keypress(function(event) {
+        var keycode = (event.keyCode ? event.keyCode : event.which);
+        if(keycode == '13'){
+          var val = $(this).val().trim();
+          if (val.startsWith('CB') && !(val.endsWith('SR') || val.endsWith('CR')) ) {
+            val = val + '-SR';
+          } else if (!isNaN(val)) { // if all numbers
+            val = val.padStart(6, '0');
+            val = 'CB' + val + '-SR';
+          } else {
+            val = val.substring(0, 8);
+          }
+          var url = 'https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~' + val + '%22%2C%22type%22%3A%22jql%22%7D%7D#';
+          window.open(url, '_blank'); 
+        }
+      });
+
+    });
+  </script>
 {% endblock %}

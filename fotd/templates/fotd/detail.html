@@ -1,10 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <div>
-    <a style="text-align: right;" href="/">Back</a>
-  </div>
-
   <h1 class="text-center">{{ feature }}: {{feature.name}}</h1>
   <div class="section">
     <div class="header">
@@ -38,6 +34,7 @@
           <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
           <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
           <button type="submit">Add</button>
+          <button type="button" class="cancelUpdateBtn">Cancel</button>
         </form>
 
         {% if updates %}
@@ -79,6 +76,7 @@
           <input type="text" name="chat" placeholder="related teams chat" style="display: inline-block;">
           <input type="text" name="meeting" placeholder="related meeting" style="display: inline-block;">
           <button type="submit">Add</button>
+          <button type="button" class="cancelTaskBtn">Cancel</button>
         </form>
         <li id="task_list_hidden_placeholder" style="display: none;"></li>
 
@@ -90,22 +88,25 @@
                 <span style="color: red;">{{ task.due }}</span>
               {% else %}
                 {{ task.due }}
-              {% endif %}
+              {% endif %}              
+              <button class="addTaskStatusBtn" data-task-id="{{ task.id }}">+</button>
             </li>
-            <form class="addTaskStatusForm" style="margin-left: 40px;" data-task-id="{{ task.id }}">
-              {% csrf_token %}
-              <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
-              <input type="text" name="status" placeholder="Add task update" style="display: inline-block; width: 50%;">
-              <button type="submit">Add</button>
-            </form>
-            {% if task.statusUpdates %}
-              <ul>
-                <li id="task_{{task.id}}_hidden_placeholder" style="display: none;"></li>
+
+            <ul>
+              <form class="addTaskStatusForm" style="display:none;" data-task-id="{{ task.id }}">
+                {% csrf_token %}
+                <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
+                <input type="text" name="status" placeholder="Add task update" style="display: inline-block; width: 50%;">
+                <button type="submit">Add</button>
+                <button type="button" class="cancelTaskStatusBtn">Cancel</button>
+              </form>
+              <li id="task_{{task.id}}_hidden_placeholder" style="display: none;"></li>
+              {% if task.statusUpdates %}
                 {% for statusUpdate in task.statusUpdates %}
                   <li>{{ statusUpdate }}</li>
                 {% endfor %}
-              </ul>
-            {% endif %}
+              {% endif %}
+            </ul>
           {% endfor %}
         {% else %}
           <li id="task_empty">No ongoing tasks.</li>
@@ -124,9 +125,13 @@
         $(this).hide();
         $('.addTaskForm').show();
       });
+      $('.cancelTaskBtn').click(function() {
+        $(this).closest('form').hide();
+        $('.addTaskBtn').show();
+      });
 
       $(".addTaskForm").on('submit', function(event){
-        event.preventDefault(); // 阻止表单的默认提交行为
+        event.preventDefault();
 
         var featureId = '{{ feature.id }}';
         var formData = {};
@@ -157,15 +162,18 @@
           }
         });
       });
-
+      
       // Feature Status Update
       $('.addUpdateBtn').click(function(){
         $(this).hide();
         $('.addStatusForm').show();
       });
-
+      $('.cancelUpdateBtn').click(function(){
+        $(this).closest('form').hide();
+        $('.addUpdateBtn').show();
+      });
       $(".addStatusForm").on('submit', function(event){
-        event.preventDefault();        
+        event.preventDefault();
         var form = $(this);
 
         var featureId = '{{ feature.id }}';
@@ -190,8 +198,20 @@
       });
 
       // Task Status Update
+      $('.addTaskStatusBtn').click(function(){
+        $(this).hide();
+        var taskId = $(this).data('task-id');
+        $('.addTaskStatusForm[data-task-id="' + taskId + '"]').show();
+      });
+      $('.cancelTaskStatusBtn').click(function(){
+        var form = $(this).closest('form');
+        var taskId = form.data('task-id');
+        $('.addTaskStatusBtn[data-task-id="' + taskId + '"]').show();
+        form.hide();
+      });
       $(".addTaskStatusForm").on('submit', function(event){
-        event.preventDefault(); // 阻止表单的默认提交行为
+        event.preventDefault();
+        var form = $(this);
 
         var taskId = $(this).attr('data-task-id');
         var date_str = $(this).find('input[name="date"]').val();
@@ -210,6 +230,7 @@
           success: function(response){
             // 在任务下方添加新的状态更新
             $('<li>' + response + '</li>').insertAfter('#task_' + taskId + '_hidden_placeholder');
+            form.hide();
           }
         });
       }); 

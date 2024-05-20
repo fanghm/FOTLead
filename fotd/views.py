@@ -15,14 +15,19 @@ class TaskSerializer(serializers.ModelSerializer):
 #@login_required
 def index(request):
     features = Feature.objects.order_by('release', 'id')
+    
+    features_with_task_count = []
+    for feature in features:
+        task_count = feature.task_set.count()
+        features_with_task_count.append((feature, task_count))
 
     request.session['today'] = date.today().strftime('%Y/%m/%d')
     request.session['wk'] = f'Wk{date.today().isocalendar()[1]}.{date.today().weekday() +1}'
     request.session['fb'] = _get_fb()
 
     context = {
-        'features': features,
-        }
+        'features_with_task_count': features_with_task_count,
+    }
 
     return render(request, 'fotd/index.html', context)
 
@@ -43,6 +48,13 @@ def detail(request, fid):
         'today': date.today()
         }
     return render(request, 'fotd/detail.html', context)
+
+def task(request, tid):
+    task = Task.objects.get(id=tid)
+    context = {
+        'task': task,
+        }
+    return render(request, 'fotd/task.html', context)
 
 @csrf_exempt
 def ajax_feature_update(request, fid):

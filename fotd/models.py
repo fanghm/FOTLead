@@ -51,6 +51,7 @@ class Feature(models.Model):
     milestone = models.CharField(max_length=7, choices=MILESTONE_CHOICES)
     #labels = models.CharField(max_length=100)  #Test_Heavy, LeadTribe_xxx, etc.
     phase = models.CharField(max_length=12, choices=PHASE_CHOICES, default='Planning')
+    customer = models.CharField(max_length=100, blank=True)
 
     # links
     fusion_link = models.CharField(max_length=300, verbose_name='JIRA Structure', help_text='Link to the JIRA Structure')

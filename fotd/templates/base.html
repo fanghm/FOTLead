@@ -29,6 +29,12 @@
   </head>
 
   <body>
+    {% if request.path != "/" %}
+    <div>
+      <a style="text-align: right;" href="/">Back</a>
+    </div>
+    {% endif %}
+
     <div id="user-tools">
       {{ request.session.today }}&nbsp;|&nbsp;      
       {% if request.path == fb_url %}
@@ -51,5 +57,9 @@
     
     {% block bottom %} {% endblock %}
     
+    <hr>
+    <footer>
+      <p>&copy; 2024 FOTL Dashboard</p>
+    </footer>
   </body>
 </html>

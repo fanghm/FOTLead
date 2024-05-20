@@ -2,28 +2,63 @@
 
 {% block content %}
 
-{% if tasks %}
-    <ul>
-    {% for task in tasks %}
-        <li style="margin-top: 200px; margin-bottom: 20px;"><a href="/task/{{ task.id }}/">{{ task.title }}</a></li>
-        <form style="margin-left: 40px;" data-task-id="{{ task.id }}">
-            {% csrf_token %}
-            <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
-            <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
-            <button type="submit">Add</button>
-        </form>
-        {% if task.statusUpdates %}
-            <ul>
-                <li id="task_{{task.id}}_first_item" style="display: none;"></li>
-                {% for statusUpdate in task.statusUpdates %}
-                    <li>{{ statusUpdate }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endfor %}
-    </ul>
+{% if task %}
+  <h1 class="text-center">{{task.feature_id}}: {{ task.title }}</h1>
+  <form class="container" style="margin-top: 40px;" data-task-id="{{ task.id }}">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label for="title">Task:</label>
+      <input class="form-control" type="text" name="title" value="{{task.title}}">
+    </div>
+
+    <div class="form-group">
+      <label for="owner">Owner:</label>
+      <input class="form-control" type="text" name="owner" value="{{task.owner}}">
+    </div>
+
+    <div class="form-group">
+      <label for="due">Due Date:</label>
+      <input class="form-control" type="date" name="due" value="{{ task.due|date:'Y-m-d' }}">
+    </div>
+
+    <div class="form-group">
+      <label for="contact">Contact:</label>
+      <input class="form-control" type="text" name="contact" value="{{task.contact}}">
+    </div>
+
+    <div class="form-group">
+      <label for="mail">mail:</label>
+      <input class="form-control" type="text" name="mail" value="{{task.mail}}">
+    </div>
+
+    <div class="form-group">
+      <label for="chat">chat:</label>
+      <input class="form-control" type="text" name="chat" value="{{task.chat}}">
+    </div>
+
+    <div class="form-group">
+      <label for="meeting">meeting:</label>
+      <input class="form-control" type="text" name="meeting" value="{{task.meeting}}">
+    </div>
+
+    <div class="form-group">
+      <label for="status">Status:</label>
+      <select class="form-control" name="status">
+        <option value="Not Started" {% if task.status == "Not Started" %}selected{% endif %}>Not Started</option>
+        <option value="Ongoing" {% if task.status == "Ongoing" %}selected{% endif %}>Ongoing</option>
+        <option value="On Hold" {% if task.status == "On Hold" %}selected{% endif %}>On Hold</option>
+        <option value="Blocked" {% if task.status == "Blocked" %}selected{% endif %}>Blocked</option>
+        <option value="Cancelled" {% if task.status == "Cancelled" %}selected{% endif %}>Cancelled</option>
+        <option value="Completed" {% if task.status == "Completed" %}selected{% endif %}>Completed</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Update</button>
+    <button type="submit" class="btn btn-danger">Delete</button>
+  </form>
 {% else %}
-    <p>No ongoing tasks.</p>
+  <p>Task not found.</p>
 {% endif %}
 {% endblock %}
 
@@ -34,7 +69,7 @@
                 event.preventDefault(); // 阻止表单的默认提交行为
 
                 var taskId = $(this).attr('data-task-id');
-                var date_str = $(this).find('input[name="date"]').val();
+                var due_str = $(this).find('input[name="due"]').val();
                 
                 status_obj = $(this).find('input[name="status"]');
                 var update_text = status_obj.val(); // 获取状态更新
