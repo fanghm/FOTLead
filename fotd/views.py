@@ -18,27 +18,30 @@ def index(request):
     
     features_with_task_count = []
     for feature in features:
-        task_count = feature.task_set.count()
+        task_count = Task.objects.filter(feature__id=feature.id).exclude(status__in=['Completed', 'Removed']).count()
         features_with_task_count.append((feature, task_count))
 
+    # TODO: update the session variables only when the date changes
     request.session['today'] = date.today().strftime('%Y/%m/%d')
     request.session['wk'] = f'Wk{date.today().isocalendar()[1]}.{date.today().weekday() +1}'
-    request.session['fb'] = _get_fb()
+    request.session['fb'], sprint_day, passed_percent = _get_fb()
 
     context = {
         'features_with_task_count': features_with_task_count,
+        'sprint_day': sprint_day,
+        'passed_percent': passed_percent,
     }
 
     return render(request, 'fotd/index.html', context)
 
 def detail(request, fid):
     feature = Feature.objects.get(id=fid)
-    updates = FeatureUpdate.objects.filter(feature__id=fid, is_key=True)
+    updates = FeatureUpdate.objects.filter(feature__id=fid, is_key=True).order_by('update_date')
     #roles = FeatureRoles.objects.get(feature__id=fid)
 
-    tasks = Task.objects.filter(feature__id=fid)
+    tasks = Task.objects.filter(feature__id=fid).exclude(status='Completed').order_by('due')
     for task in tasks:
-        task.statusUpdates = StatusUpdate.objects.filter(task=task).order_by('-id')[:3]  # Fetch the latest 3 status updates of each task
+        task.statusUpdates = StatusUpdate.objects.filter(task=task).order_by('-update_date')[:3]  # Fetch the latest 3 status updates of each task
         
     # Create a context dictionary with the fetched data
     context = {
@@ -97,6 +100,27 @@ def ajax_task_add(request, fid):
 
 @csrf_exempt
 def ajax_task_update(request, tid):
+    if request.method == 'POST':
+        done = False
+        task = Task.objects.get(pk=tid)
+        for key, value in request.POST.items():
+            if hasattr(task, key):
+                setattr(task, key, value)
+                if (key == "status" and value == "Completed"):
+                    done = True
+                    print(f"Task {task.title} is done")
+
+        task.save()
+
+        if done:
+            FeatureUpdate.objects.create(feature=task.feature, update_date=date.today(), is_key=False, update_text='Task done: ' + task.title)
+
+        return JsonResponse({'status': 'success', 'message': 'Task updated successfully'})
+    else:
+        return JsonResponse({'status': 'fail', 'message': 'Invalid request'})
+
+@csrf_exempt
+def ajax_task_status(request, tid):
     task = Task.objects.get(id=tid)
     logging.debug('taskId: ' + tid);
 
@@ -121,16 +145,21 @@ def fb(request):
     return render(request, 'fotd/fb.html', context)
 
 def _get_fb():
-    today= date.today()
+    today = date.today()
     start_fb = f'FB{str(today.year)[-2:]}{today.month*2:02d}'
     sprints = Sprint.objects.filter(fb__gte=start_fb).order_by('fb')[:3]
-    print(sprints)
-    print(start_fb)
+    #print(sprints)
+    #print(start_fb)
 
     for sprint in sprints:
         if (today >= sprint.start_date and today <= sprint.end_date):
+            sprint_day = (today - sprint.start_date).days + 1
+            print(f'{today} is in {sprint.fb}, day {sprint_day}')
+            passed_percent = int(sprint_day * 100 / 14)
+
             if (today >= sprint.start_date + timedelta(days=7)):
-                return sprint.fb + '.2'
+                return (sprint.fb + '.2', sprint_day, passed_percent)
             else:
-                return sprint.fb + '.1'
-    return 'N/A'
+                return (sprint.fb + '.1', sprint_day, passed_percent)
+
+    return ('N/A', 0)

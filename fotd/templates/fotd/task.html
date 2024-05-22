@@ -4,7 +4,7 @@
 
 {% if task %}
   <h1 class="text-center">{{task.feature_id}}: {{ task.title }}</h1>
-  <form class="container" style="margin-top: 40px;" data-task-id="{{ task.id }}">
+  <form class="container" style="margin-top: 40px;" data-task-id="{{ task.id }}" data-feat-id="{{ task.feature_id }}">
     {% csrf_token %}
 
     <div class="form-group">
@@ -63,31 +63,26 @@
 {% endblock %}
 
 {% block bottom %}
-    <script>
-        $(document).ready(function(){
-            $("form").on('submit', function(event){
-                event.preventDefault(); // 阻止表单的默认提交行为
-
-                var taskId = $(this).attr('data-task-id');
-                var due_str = $(this).find('input[name="due"]').val();
-                
-                status_obj = $(this).find('input[name="status"]');
-                var update_text = status_obj.val(); // 获取状态更新
-                status_obj.val(''); // 重置status input box中的内容
-
-                $.ajax({
-                    url: '/ajax_statusupdate/' + taskId + '/',
-                    type: 'POST',
-                    data: {
-                        'date_str': date_str,
-                        'update_text': update_text
-                    },
-                    success: function(response){
-                        // 在任务下方添加新的状态更新
-                        $('<li>' + response + '</li>').insertAfter('#task_' + taskId + '_first_item');
-                    }
-                });
-            });
+  <script>
+    $(document).ready(function(){
+      $("form").on('submit', function(event){
+        event.preventDefault();
+  
+        var taskId = $(this).attr('data-task-id');
+        var fid = $(this).attr('data-feat-id');
+        var formData = $(this).serialize(); // 获取表单中所有字段的值
+  
+        $.ajax({
+          url: '/ajax_task_update/' + taskId + '/',
+          type: 'POST',
+          data: formData, // 将所有字段的值发送到后端
+          success: function(response){
+            alert(response.message);
+            url = '/detail/' + fid + '/';
+            window.location.href = url;
+          }
         });
-    </script>
+      });
+    });
+  </script>
 {% endblock %}

@@ -30,7 +30,7 @@ TASK_STATUS = [
     ('Ongoing', 'Ongoing'),
     ('On Hold', 'On Hold'),
     ('Blocked', 'Blocked'),
-    ('Cancelled', 'Cancelled'),
+    ('Removed', 'Removed'),
     ('Completed', 'Completed')
 ]
 

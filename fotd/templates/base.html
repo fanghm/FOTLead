@@ -36,13 +36,13 @@
     {% endif %}
 
     <div id="user-tools">
-      {{ request.session.today }}&nbsp;|&nbsp;      
+      {{ request.session.today }}&nbsp;|&nbsp;{{ request.session.wk }}&nbsp;|&nbsp;     
       {% if request.path == fb_url %}
         <span>{{ request.session.fb }}</span>
       {% else %}
         <a href="{{ fb_url }}">{{ request.session.fb }}</a>
       {% endif %}
-      &nbsp;|&nbsp;{{ request.session.wk }} - Welcome,
+      - Welcome,
       {% if user.is_authenticated %}
         <strong>{{user.username}}</strong>!
         <a href="{% url 'logout' %}">Logout</a>

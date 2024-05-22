@@ -35,22 +35,23 @@ def updateDb(results):
         #fid = item.fields.customfield_38702 #customfield_37381 #ItemID
         #name = item.fields.customfield_38703    #none for CNI
         labels = ', '.join(item.fields.labels) if item.fields.labels else 'N/A'
+        desc = item.fields.description
         summary = item.fields.summary #get name from summary as no dedicated 'name' field for CNI
         if summary.startswith('CNI'):
             fid, name = summary.split(' - ', 1)
             fp_link = 'https://jiradc.ext.net.nokia.com/browse/' +  fid.strip()
 
             pdm = item.fields.assignee.displayName if item.fields.assignee else 'N/A'
+            desc = labels + '\n' + desc.substring(0, 200)  # too much text for CNI, limit to 200 chars
         else:
             fid, name = summary.split(' ', 1)
             fp_link = item.fields.customfield_38715 #FP Link
 
-            desc = item.fields.description # too much text for CNI
             deps = item.fields.customfield_44990 #pre-condition, no such field for CNI
             milestone = item.fields.customfield_38728 #eg: Candidate for P2 content
 
             pdm = item.fields.customfield_38709 if item.fields.customfield_38709 else 'N/A' #str object instead of User object 
-            labels = f"{desc}\n{deps}\n{milestone}\n{labels}"
+            desc = f"{desc}\n{deps}\n{milestone}\n{labels}"
         
         release = item.fields.customfield_38710[:4] # might be incorrect for LLF
         priority = int(item.fields.customfield_38716) if item.fields.customfield_38716 else 0
@@ -70,7 +71,7 @@ def updateDb(results):
             fusion_link, fp_link, cfam_link, gantt_link, rep_link, risk, text2, desc, created_at )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ''', (fid, name, release, priority, 'tba', 'Planning',
-         'jira link', fp_link, 'cfam doc', 'powerbi link', 'rep link', risk, text2, labels))
+         'jira link', fp_link, 'cfam doc', 'powerbi link', 'rep link', risk, text2, desc))
         
         # 获取最后一次插入的行的 ID
         #feature_id = cursor.lastrowid

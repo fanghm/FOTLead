@@ -119,7 +119,7 @@
 
 {% block bottom %}
   <script>
-      $(document).ready(function(){
+    $(document).ready(function(){
       // clicking edit button to expand the row to display input interface
       $('.addTaskBtn').click(function(){
         $(this).hide();
@@ -153,8 +153,22 @@
           success: function(response){
             var dueDate = new Date(response.due);
             var formattedDate = (dueDate.getMonth() + 1) + '/' + dueDate.getDate();
+
+            var today = new Date();
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+            var yyyy = today.getFullYear();            
+            var today_str = yyyy + '-' + mm + '-' + dd;
+
             $('<li><a href="/task/' + response.id + '/">' + response.title +'</a> - ' + response.owner
-               + ' | ' + formattedDate + '</li>').insertAfter('#task_list_hidden_placeholder');
+               + ' | ' + formattedDate + '<button class="addTaskStatusBtn" data-task-id="' 
+               + response.id + '">+</button></li>\n'
+              + '<ul><form class="addTaskStatusForm" style="display:none;" data-task-id="' + response.id +'">'
+              + '<input type="date" name="date" value="' + today_str + '" style="display: inline-block;" max="' + today_str + '">'
+              + '<input type="text" name="status" placeholder="Add task update" style="display: inline-block; width: 50%;">'
+              + '<button type="submit">Add</button>'
+              + '<button type="button" class="cancelTaskStatusBtn">Cancel</button>'
+              + '</form> <li id="task_' + response.id +'_hidden_placeholder" style="display: none;"></li></ul>').insertAfter('#task_list_hidden_placeholder');
             
             $('#task_empty').hide();
             form.hide();
@@ -196,46 +210,48 @@
           }
         });
       });
-
-      // Task Status Update
-      $('.addTaskStatusBtn').click(function(){
-        $(this).hide();
-        var taskId = $(this).data('task-id');
-        $('.addTaskStatusForm[data-task-id="' + taskId + '"]').show();
-      });
-      $('.cancelTaskStatusBtn').click(function(){
-        var form = $(this).closest('form');
-        var taskId = form.data('task-id');
-        $('.addTaskStatusBtn[data-task-id="' + taskId + '"]').show();
-        form.hide();
-      });
-      $(".addTaskStatusForm").on('submit', function(event){
-        event.preventDefault();
-        var form = $(this);
-
-        var taskId = $(this).attr('data-task-id');
-        var date_str = $(this).find('input[name="date"]').val();
-
-        status_obj = $(this).find('input[name="status"]');
-        var update_text = status_obj.val(); // 获取状态更新
-        status_obj.val(''); // 重置status input box中的内容
-
-        $.ajax({
-          url: '/ajax_task_update/' + taskId + '/',
-          type: 'POST',
-          data: {
-            'date_str': date_str,
-            'update_text': update_text
-          },
-          success: function(response){
-            // 在任务下方添加新的状态更新
-            $('<li>' + response + '</li>').insertAfter('#task_' + taskId + '_hidden_placeholder');
-            form.hide();
-          }
-        });
-      }); 
     });
 
+    // Use Event Delegation to add event listener to dynamically added web elements
+    // Task Status handlers
+    $(document).on('click', '.addTaskStatusBtn', function() {
+      $(this).hide();
+      var taskId = $(this).data('task-id');
+      $('.addTaskStatusForm[data-task-id="' + taskId + '"]').show();
+    });
+    
+    $(document).on('click', '.cancelTaskStatusBtn', function() {
+      var form = $(this).closest('form');
+      var taskId = form.data('task-id');
+      $('.addTaskStatusBtn[data-task-id="' + taskId + '"]').show();
+      form.hide();
+    });
+
+    $(document).on('submit', 'form.addTaskStatusForm', function(event) {
+      event.preventDefault();
+      var form = $(this);
+
+      var taskId = $(this).attr('data-task-id');
+      var date_str = $(this).find('input[name="date"]').val();
+
+      status_obj = $(this).find('input[name="status"]');
+      var update_text = status_obj.val(); // 获取状态更新
+      status_obj.val(''); // 重置status input box中的内容
+
+      $.ajax({
+        url: '/ajax_task_status/' + taskId + '/',
+        type: 'POST',
+        data: {
+          'date_str': date_str,
+          'update_text': update_text
+        },
+        success: function(response){
+          $('<li>' + response + '</li>').insertAfter('#task_' + taskId + '_hidden_placeholder');
+          form.hide();
+          $('.addTaskStatusBtn[data-task-id="' + taskId + '"]').show();
+        }
+      });
+    });
   </script>
 
 {% endblock %}
