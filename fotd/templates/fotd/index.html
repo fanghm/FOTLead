@@ -22,11 +22,12 @@
       padding: 5px 10px;
       font-size: 14px;
     }
-    </style>
+  </style>
 {% endblock %}
 
 {% block content %}
-  <nav class="navbar">
+
+  <!--nav class="navbar">
     <div class="container">
       <h1 class="logo">My Dashboard</h1>
       <a href="#" class="add-feature-link">
@@ -37,8 +38,8 @@
         </svg>
       </a>
     </div>
-  </nav>
-  
+  </nav-->
+  <h1 class="logo">FOTL Dashboard</h1>
   <main class="main-content">
     <!-- 表格 -->
     <table id="feature-table">
@@ -91,12 +92,15 @@
     </table>
   </main>
 
+  <div class="center">
+    <input type="text" id="prId" placeholder="Search a Pronto" >
+    <input type="text" id="featId" placeholder="Search a feature" >
+    <input type="text" id="featureId" placeholder="Search a feature's CA items" >
+  </div>
+
   <div class="progress">
     <div class="progress-bar" role="progressbar" style="width: {{ passed_percent }}%;" aria-valuenow="{{ sprint_day }}" aria-valuemin="0" aria-valuemax="14">{{ request.session.fb|slice:6 }} - day {{ sprint_day }} </div>
   </div>
-
-  <input type="text" id="prId" placeholder="Enter PR#" ><!--autofocus-->
-  <input type="text" id="featureId" placeholder="Enter Feature/CNI ID#" >
 
 {% endblock %}
 
@@ -110,8 +114,7 @@
         var keycode = (event.keyCode ? event.keyCode : event.which);
         if(keycode == '13'){
           var val = $(this).val().trim();
-          if (!isNaN(val)) { // if all numbers
-            val = val.padStart(6, '0');
+          if (!isNaN(val) && val.length == 6) { // if 6 numbers
             val = 'PR' + val;
           } else {
             val = val.substring(0, 8);
@@ -121,9 +124,8 @@
           window.open(url, '_blank'); 
         }
       });
-
     
-    $('#featureId').keypress(function(event) {
+    $('#featId').keypress(function(event) {
         var keycode = (event.keyCode ? event.keyCode : event.which);
         if(keycode == '13'){
           var val = $(this).val().trim();
@@ -136,6 +138,23 @@
             val = val.substring(0, 8);
           }
           var url = 'https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~' + val + '%22%2C%22type%22%3A%22jql%22%7D%7D#';
+          window.open(url, '_blank'); 
+        }
+      });
+
+      $('#featureId').keypress(function(event) {
+        var keycode = (event.keyCode ? event.keyCode : event.which);
+        if(keycode == '13'){
+          var val = $(this).val().trim();
+          if (val.startsWith('CB') && !(val.endsWith('SR') || val.endsWith('CR')) ) {
+            val = val + '-SR';
+          } else if (!isNaN(val)) { // if all numbers
+            val = val.padStart(6, '0');
+            val = 'CB' + val + '-SR';
+          } else {
+            val = val.substring(0, 8);
+          }
+          var url = 'https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22issuetype%20%3D%20%5C%22Competence%20Area%5C%22%20%20AND%20(%5C%22Feature%20ID%5C%22%20~' + val + ')%20and%20status%20not%20in%20(done%2C%20obsolete)%22%2C%22type%22%3A%22jql%22%7D%7D#'
           window.open(url, '_blank'); 
         }
       });

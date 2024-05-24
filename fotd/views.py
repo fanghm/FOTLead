@@ -36,7 +36,7 @@ def index(request):
 
 def detail(request, fid):
     feature = Feature.objects.get(id=fid)
-    updates = FeatureUpdate.objects.filter(feature__id=fid, is_key=True).order_by('update_date')
+    updates = FeatureUpdate.objects.filter(feature__id=fid).order_by('update_date')
     #roles = FeatureRoles.objects.get(feature__id=fid)
 
     tasks = Task.objects.filter(feature__id=fid).exclude(status='Completed').order_by('due')

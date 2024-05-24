@@ -12,7 +12,7 @@
     <div class="content">
       <ul>
         <li>Release: {{ feature.release }} &#09; Priority: {{ feature.priority }}</li>
-        <li>Desc: {{ feature.desc }}</li>
+        <li>Desc: {{ feature.desc|urlize }}</li>
         <li>Text2: {{ feature.text2|linebreaksbr }}</li>
         </li>
       </ul>
@@ -39,7 +39,7 @@
 
         {% if updates %}
           {% for statusUpdate in updates %}
-            <li>{{ statusUpdate }}</li>
+            <li>{{ statusUpdate|urlize }}</li>
           {% endfor %}
         {% else %}
           <li id="feature_update_empty">No update yet</p>
@@ -103,7 +103,7 @@
               <li id="task_{{task.id}}_hidden_placeholder" style="display: none;"></li>
               {% if task.statusUpdates %}
                 {% for statusUpdate in task.statusUpdates %}
-                  <li>{{ statusUpdate }}</li>
+                  <li>{{ statusUpdate|urlize }}</li>
                 {% endfor %}
               {% endif %}
             </ul>
