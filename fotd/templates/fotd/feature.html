@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if feature %}
+  <h1 class="text-center">{{feature.id}}</h1>
+  <form class="container" style="margin-top: 40px;" data-feature-id="{{ feature.id }}" data-feat-id="{{ feature.feature_id }}">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label for="name">Name:</label>
+      <input class="form-control" type="text" name="name" value="{{feature.name}}">
+    </div>
+
+    <div class="form-group">
+      <label for="release">Release:</label>
+      <input class="form-control" type="text" name="release" value="{{feature.release}}">
+    </div>
+
+    <div class="form-group">
+      <label for="priority">Priority:</label>
+      <input class="form-control" type="number" name="priority" value="{{feature.priority}}">
+    </div>
+
+    <div class="form-group">
+      <label for="milestone">Milestone:</label>
+      <input class="form-control" type="text" name="milestone" value="{{feature.milestone}}">
+    </div>
+
+    <div class="form-group">
+        <label for="phase">Phase:</label>
+        <select class="form-control" name="phase">
+          <option value="Planning" {% if feature.phase == "Planning" %}selected{% endif %}>Planning</option>
+          <option value="Development" {% if feature.phase == "Development" %}selected{% endif %}>Development</option>
+          <option value="Testing" {% if feature.phase == "Testing" %}selected{% endif %}>Testing</option>
+          <option value="Done" {% if feature.phase == "Done" %}selected{% endif %}>Done</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+      <label for="customer">Customer:</label>
+      <input class="form-control" type="text" name="customer" value="{{feature.customer}}">
+    </div>
+
+    <div class="form-group">
+      <label for="fusion_link">JIRA Structure:</label>
+      <input class="form-control" type="text" name="fusion_link" value="{{feature.fusion_link}}">
+    </div>
+
+    <div class="form-group">
+      <label for="fp_link">FP Link:</label>
+      <input class="form-control" type="text" name="fp_link" value="{{feature.fp_link}}">
+    </div>
+
+    <div class="form-group">
+      <label for="cfam_link">CFAM Link:</label>
+      <input class="form-control" type="text" name="cfam_link" value="{{feature.cfam_link}}">
+    </div>
+
+    <div class="form-group">
+      <label for="gantt_link">Gantt Chart:</label>
+      <input class="form-control" type="text" name="gantt_link" value="{{feature.gantt_link}}">
+    </div>
+
+    <div class="form-group">
+      <label for="rep_link">Reporting Portal:</label>
+      <input class="form-control" type="text" name="rep_link" value="{{feature.rep_link}}">
+    </div>
+
+    <div class="form-group">
+      <label for="risk">Risk:</label>
+      <select class="form-control" name="risk">
+        <option value="Green" {% if feature.risk == "Green" %}selected{% endif %}>Green</option>
+        <option value="Yellow" {% if feature.risk == "Yellow" %}selected{% endif %}>Yellow</option>
+        <option value="Red" {% if feature.risk == "Red" %}selected{% endif %}>Red</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="text2">Text2:</label>
+      <textarea class="form-control" name="text2">{{feature.text2}}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="desc">Description:</label>
+      <textarea class="form-control" name="desc">{{feature.desc}}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Update</button>
+  </form>
+{% else %}
+  <p>Task not found.</p>
+{% endif %}
+{% endblock %}
+
+{% block bottom %}
+  <script>
+    $(document).ready(function(){
+      $("form").on('submit', function(event){
+        event.preventDefault();
+  
+        var fid = $(this).attr('data-feature-id');
+        var formData = $(this).serialize(); // 获取表单中所有字段的值
+  
+        $.ajax({
+          url: '/ajax_feature_update/' + fid + '/',
+          type: 'POST',
+          data: formData,
+          success: function(response){
+            alert(response.message);
+            url = '/detail/' + fid + '/';
+            window.location.href = url;
+          }
+        });
+      });
+    });
+  </script>
+{% endblock %}

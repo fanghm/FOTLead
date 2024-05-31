@@ -61,6 +61,7 @@ class Feature(models.Model):
     rep_link = models.CharField(max_length=100, blank=True, verbose_name='Reporting Portal', help_text='Link to the Reporting Portal')
     
     risk = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
+    risk_detail = models.CharField(max_length=50, blank=True)
     text2 = models.CharField(max_length=512, blank=True)
     desc = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -152,6 +153,8 @@ class Sprint(models.Model):
     fb = models.CharField(max_length=6)
     start_date = models.DateField()
     end_date = models.DateField()
+    release = models.CharField(max_length=4, blank=True)
+    checkpoint = models.CharField(max_length=20, blank=True) 
 
     def __str__(self):
         return f'{self.fb}: {self.start_date.strftime("%m/%d")} - {self.end_date.strftime("%m/%d")}'

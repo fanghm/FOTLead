@@ -6,6 +6,7 @@ import logging
 from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
+from .myjira import queryJiraCaItems
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,7 +25,7 @@ def index(request):
     # TODO: update the session variables only when the date changes
     request.session['today'] = date.today().strftime('%Y/%m/%d')
     request.session['wk'] = f'Wk{date.today().isocalendar()[1]}.{date.today().weekday() +1}'
-    request.session['fb'], sprint_day, passed_percent = _get_fb()
+    request.session['fb'], sprint_day, passed_percent = _get_fb_info()
 
     context = {
         'features_with_task_count': features_with_task_count,
@@ -52,6 +53,15 @@ def detail(request, fid):
         }
     return render(request, 'fotd/detail.html', context)
 
+def feature(request, fid):
+    feature = Feature.objects.get(id=fid)
+
+    # Create a context dictionary with the fetched data
+    context = {
+        'feature': feature,
+        }
+    return render(request, 'fotd/feature.html', context)
+
 def task(request, tid):
     task = Task.objects.get(id=tid)
     context = {
@@ -61,6 +71,19 @@ def task(request, tid):
 
 @csrf_exempt
 def ajax_feature_update(request, fid):
+    if request.method == 'POST':
+        feature = Feature.objects.get(id=fid)
+        for key, value in request.POST.items():
+            if hasattr(feature, key):
+                setattr(feature, key, value)
+
+        feature.save()
+        return JsonResponse({'status': 'success', 'message': 'Feature updated successfully'})
+    else:
+        return JsonResponse({'status': 'fail', 'message': 'Invalid request'})
+
+@csrf_exempt
+def ajax_feature_status(request, fid):
     feature = Feature.objects.get(id=fid)
     logging.debug('featureId: ' + fid);
 
@@ -120,6 +143,12 @@ def ajax_task_update(request, tid):
         return JsonResponse({'status': 'fail', 'message': 'Invalid request'})
 
 @csrf_exempt
+def ajax_task_delete(request, tid):
+    task = Task.objects.get(pk=tid)
+    task.delete()
+    return JsonResponse({'status': 'success', 'message': 'Task deleted successfully'})
+
+@csrf_exempt
 def ajax_task_status(request, tid):
     task = Task.objects.get(id=tid)
     logging.debug('taskId: ' + tid);
@@ -136,15 +165,16 @@ def ajax_task_status(request, tid):
     else:
         return HttpResponse('No POST data')
 
-def fb(request):
-    sprints = Sprint.objects.all()
+# yy: year in 2 digits, e.g. 22 for 2022
+def fb(request, yy):
+    sprints = Sprint.objects.filter(fb__startswith='FB'+yy).order_by('fb')
     context = {
         'sprints': sprints,
         'today': date.today().strftime('%Y-%m-%d')
         }
     return render(request, 'fotd/fb.html', context)
 
-def _get_fb():
+def _get_fb_info():
     today = date.today()
     start_fb = f'FB{str(today.year)[-2:]}{today.month*2:02d}'
     sprints = Sprint.objects.filter(fb__gte=start_fb).order_by('fb')[:3]
@@ -157,9 +187,45 @@ def _get_fb():
             print(f'{today} is in {sprint.fb}, day {sprint_day}')
             passed_percent = int(sprint_day * 100 / 14)
 
-            if (today >= sprint.start_date + timedelta(days=7)):
-                return (sprint.fb + '.2', sprint_day, passed_percent)
-            else:
-                return (sprint.fb + '.1', sprint_day, passed_percent)
+            # if (today >= sprint.start_date + timedelta(days=7)):
+            #     return (sprint.fb + '.2', sprint_day, passed_percent)
+            # else:
+            #     return (sprint.fb + '.1', sprint_day, passed_percent)
+            return (sprint.fb, sprint_day, passed_percent)
 
     return ('N/A', 0)
+
+
+def _get_fbs(start_fb, end_fb):
+    if end_fb > end_fb:
+        return []
+    elif start_fb == end_fb:
+        return [start_fb]
+    else:
+        fbs = [start_fb]
+        start = int(start_fb)
+        while start < int(end_fb):
+            if start%100 == 26:
+                start = (int(start/100) + 1) * 100 + 1
+            else:
+                start += 1
+            fbs.append(str(start))
+        return fbs
+
+def backlog(request, fid):
+    ca_items, sprint_span = queryJiraCaItems(fid)
+    current_fb = request.session['fb'][2:]
+    if sprint_span[0] < current_fb:
+        sprints = _get_fbs(current_fb, sprint_span[1])
+    else:
+        sprints = _get_fbs(*sprint_span)
+
+    context = {
+        'fid': fid,
+        'ca_items': ca_items,
+        'fields': ca_items[0].keys() if ca_items else [],
+        'sprint_span': sprints,
+        'link_prefix': 'https://jiradc.ext.net.nokia.com/browse/',
+        'Committed': ca_items[0]['RC_Status'].startswith('Committed') if ca_items and ca_items[0]['RC_Status'] else False,
+        }
+    return render(request, 'fotd/backlog.html', context)

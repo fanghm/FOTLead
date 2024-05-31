@@ -4,6 +4,7 @@
 import sqlite3
 from jira import JIRA
 from datetime import datetime, timedelta, date
+import json
 
 def dumpAsHtml(item):
     fid, _ = item.fields.summary.split(' ', 1)
@@ -120,32 +121,84 @@ def initFeatures():
     #dumpAsHtml(results[0])
     #dumpAsHtml(results[2])
     #updateDb(results)
-    debug(results)
+    #debug(results)
 
+def jiraQuery(jql_str, field_dict):
+    jira = JIRA(server = "https://esjirp66.emea.nsn-net.net", basic_auth=('qwn783', 'Lovelife!'))
+    json_result = jira.search_issues(jql_str, 0, 20, json_result=True)  #, fields=list(field_dict.values())
+
+    #print("Total results={}\n".format(len(results)))
+    # print(json_result)
+    with open('output.txt', 'w', encoding='utf-8') as f:
+        f.write(json.dumps(json_result))
+
+    # for issue in json_result['issues']:
+    #     print(issue['key'])
+    #     for field_name, custom_name in field_dict.items():
+    #         value = issue['fields'][custom_name]
+    #         if not value:
+    #             print(f"{field_name}=>None")
+    #         elif field_name in ('Competence Area', 'Activity Type', 'RC Status'):
+    #             print(f"{field_name}=>{value['value']}")
+    #         elif field_name in ('Assignee'):
+    #             print(f"{field_name}=>{value['displayName']}")
+    #         else:
+    #             print(f"{field_name}=>{value}")
+    #     print('---')
+    return json_result
+
+# short fb (in 2 weeks) starts from year 2022
+# Dove: https://app.powerbi.com/groups/me/apps/85a81867-e9aa-4ef2-93d1-f93e3a7ef551/reports/2d8bffaa-0679-499f-876d-b6668c85ab86/ReportSection247cdc907596091d4603?experience=power-bi
 yearly_fb_start = [
-    ('2020', '2022-01-01'),
-    ('2021', '2022-01-01'),
-    ('2022', '2022-01-01'),
-    ('2023', '2022-01-01'),
-    ('2024', '2022-01-03'),
-    ('2025', '2022-01-01'),
-    ('2026', '2022-01-01'),
+    ('2022', '2022-01-05'),
+    ('2023', '2023-01-04'),
+    ('2024', '2024-01-03'),
+    ('2025', '2025-01-01'),
 ]
 def initFbDates():
     conn = sqlite3.connect('../db.sqlite3')
     cursor = conn.cursor()
 
-    start = datetime.strptime('2024-01-03', "%Y-%m-%d").date()
+    start = datetime.strptime('2025-01-01', "%Y-%m-%d").date()
     for i in range(1, 27):
         end = start + timedelta(days=13)        
-        # print('FB24%02d: %s - %s %s' % (i, start.strftime('%m/%d'), end.strftime('%m/%d'), '***' if (date.today()>=start and date.today()<=end) else ''))
+        print('FB25%02d: %s - %s %s' % (i, start.strftime('%m/%d'), end.strftime('%m/%d'), '***' if (date.today()>=start and date.today()<=end) else ''))
         cursor.execute('''
             INSERT INTO fotd_sprint(fb, start_date, end_date)
             VALUES (?, ?, ?)
-        ''', (f'FB24{i:02d}', start, end))
+        ''', (f'FB25{i:02d}', start, end))
         start = end + timedelta(days=1)
 
     conn.commit()
     conn.close()
 
-initFbDates()
+
+#--- main entry ----
+#initFbDates()
+fields = ('assignee, summary, fixVersions, customfield_38750'    #Act Type
+    + ', customfield_38690'  # Competence Area
+    + ', customfield_48891'  # start fb number, eg: 2412.0
+    + ', customfield_38694'  # start fb
+    + ', customfield_48890'  # end fb number, eg: 2410.0
+    + ', customfield_38693'  # end fb
+    + ', customfield_43292'  # orig ee
+    + ', customfield_43291'  # remaining ee
+    + ', customfield_38702'  # item id
+    + ', customfield_38728')  # RC status
+field_dict = {
+    'Item ID': 'customfield_38702',
+    'Competence Area': 'customfield_38690',
+    'Activity Type': 'customfield_38750',
+    'Assignee': 'assignee',
+    #'Start FB, eg: 2412.0': 'customfield_48891',
+    'Start FB': 'customfield_38694',
+    #'end fb number, eg: 2410.0': 'customfield_48890',
+    'End FB': 'customfield_38693',
+    'Original Estimate': 'customfield_43292',
+    'Time Remaining': 'customfield_43291',
+    'RC Status': 'customfield_38728',
+    'RC FB': 'customfield_43490',    
+}
+
+jql_str = '''("Feature ID" ~ CB012842-SR) and issuetype = "Competence Area" AND status not in (obsolete) order by "Item ID" '''
+jiraQuery(jql_str, field_dict)

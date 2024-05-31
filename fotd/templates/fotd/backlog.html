@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+
+{% block css %}
+  <style>
+    .no-wrap {
+      white-space: nowrap;
+    }
+    .progress {
+      height: 50px;
+    }
+    .delayed {
+      background-color: red;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
+{% endblock %}
+
+{% block script %} 
+  <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
+{% endblock %}
+
+{% block content %}
+<h1>Backlog of {{fid }}</h1>
+<div class="container-fluid">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        {% for field_name in fields %}
+          {% if Committed or field_name != "RC_FB" %}
+            <th>{{ field_name|replace:"_, " }}</th>
+          {% endif %}
+        {% endfor %}
+
+        {% for fb in sprint_span %}
+          <th> {{ fb }} </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in ca_items %}
+        <tr>
+          {% for field_name, field_value in item.items %}
+            {% if field_name == "Key" %}
+              <td class="no-wrap"><a href="{{link_prefix}}{{field_value}}" target="_blank">{{ field_value }}</a></td>
+            {% elif field_name == "Progress" %}
+              <td class="no-wrap">
+                <div class="progress">
+                  <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-info{% endif %}" role="progressbar" style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+              </td>
+            {% elif field_name == "RC_FB" %}
+              {% if Committed %}
+                <td class="no-wrap {% if item.End_FB > field_value %}delayed{% endif %}">{{ field_value }}</td>
+              {% endif %}
+            {% else %}
+              <td class="no-wrap">{{ field_value }}</td>
+            {% endif %}
+          {% endfor %}
+
+          {% for fb in sprint_span %}
+            {% if fb <= item.End_FB %}
+              <td style="background-color: green;"></td>
+            {% else %}
+              <td></td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  $(document).ready(function() {
+    $('.table').DataTable({
+      "pageLength": 25
+    });
+  });
+</script>
+{% endblock %}

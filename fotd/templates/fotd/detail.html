@@ -1,4 +1,12 @@
 {% extends "base.html" %}
+{% block css %}
+  <style>
+    .edit-icon {
+      display: inline-block;
+      transform: rotateZ(90deg);
+    }
+    </style>
+{% endblock %}
 
 {% block content %}
   <h1 class="text-center">{{ feature }}: {{feature.name}}</h1>
@@ -6,6 +14,7 @@
     <div class="header">
       <div style="display: flex; align-items: center;">
         <h2>Basic Info</h2>
+        <a href="/feature/{{ feature.id }}/"><span class="edit-icon">&#X270E;</span></a>
       </div>
     </div>
 
@@ -13,7 +22,7 @@
       <ul>
         <li>Release: {{ feature.release }} &#09; Priority: {{ feature.priority }}</li>
         <li>Desc: {{ feature.desc|urlize }}</li>
-        <li>Text2: {{ feature.text2|linebreaksbr }}</li>
+        <li>Text2: {{ feature.text2|escape|linebreaksbr }}</li>
         </li>
       </ul>
     </div>
@@ -37,13 +46,11 @@
           <button type="button" class="cancelUpdateBtn">Cancel</button>
         </form>
 
-        {% if updates %}
-          {% for statusUpdate in updates %}
-            <li>{{ statusUpdate|urlize }}</li>
-          {% endfor %}
-        {% else %}
+        {% for statusUpdate in updates %}
+          <li>{{ statusUpdate|urlizetrunc:30 }}</li>
+        {% empty %}
           <li id="feature_update_empty">No update yet</p>
-        {% endif %}
+        {% endfor %}
         
         <li id="feature_update_hidden_placeholder" style="display: none;"></li>
       </ul>
@@ -196,7 +203,7 @@
         $(this).find('input[name="status"]').val(''); // 重置status input box中的内容
 
         $.ajax({
-          url: '/ajax_feature_update/' + featureId + '/',
+          url: '/ajax_feature_status/' + featureId + '/',
           type: 'POST',
           data: {
             'date_str': date_str,
