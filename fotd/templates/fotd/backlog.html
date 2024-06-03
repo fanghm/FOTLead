@@ -7,10 +7,13 @@
       white-space: nowrap;
     }
     .progress {
-      height: 50px;
+      height: 30px;
     }
     .delayed {
       background-color: red;
+    }
+    .center-align {
+      text-align: center;
     }
   </style>
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
@@ -27,7 +30,9 @@
     <thead>
       <tr>
         {% for field_name in fields %}
-          {% if Committed or field_name != "RC_FB" %}
+          {% if field_name == "Summary" %}
+            {##}
+          {% elif Committed or field_name != "RC_FB" %}
             <th>{{ field_name|replace:"_, " }}</th>
           {% endif %}
         {% endfor %}
@@ -41,26 +46,34 @@
       {% for item in ca_items %}
         <tr>
           {% for field_name, field_value in item.items %}
-            {% if field_name == "Key" %}
-              <td class="no-wrap"><a href="{{link_prefix}}{{field_value}}" target="_blank">{{ field_value }}</a></td>
+            {% if field_name == "Summary" %}
+              {# only show as a tip of the key as the text is too long #}
+            {% elif field_name == "Key" %}
+              <td class="no-wrap"><a href="{{link_prefix}}{{field_value}}" target="_blank" title="{{item.Summary}}">{{ field_value }}</a></td>
             {% elif field_name == "Progress" %}
               <td class="no-wrap">
                 <div class="progress">
-                  <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-info{% endif %}" role="progressbar" style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
+                  <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
               </td>
             {% elif field_name == "RC_FB" %}
-              {% if Committed %}
+              {% if Committed and field_value and item.End_FB %}
                 <td class="no-wrap {% if item.End_FB > field_value %}delayed{% endif %}">{{ field_value }}</td>
+              {% elif Committed and field_value %}
+                <td class="no-wrap">{{ field_value }}</td>
+              {% else %}
+                {# don't show this field if not committed, must align w/ thead #}
               {% endif %}
+            {% elif field_name == "Original_Estimate" or field_name == "Time_Remaining" %}
+              <td class="no-wrap">{% if field_value %}{{ field_value|rjust:"6" }}{% endif %}</td>
             {% else %}
-              <td class="no-wrap">{{ field_value }}</td>
+              <td class="no-wrap">{% if field_value %}{{ field_value }}{% endif %}</td>
             {% endif %}
           {% endfor %}
 
           {% for fb in sprint_span %}
             {% if fb <= item.End_FB %}
-              <td style="background-color: green;"></td>
+              <td style="background-color: limegreen;"></td>
             {% else %}
               <td></td>
             {% endif %}
@@ -72,10 +85,20 @@
 </div>
 
 <script>
-  $(document).ready(function() {
-    $('.table').DataTable({
-      "pageLength": 25
-    });
+$(document).ready(function() {
+  // Get the number of columns
+  var numColumns = $('.table thead th').length;
+
+  // Generate an array of column indexes from 10 to the last column
+  var nonSortableColumns = Array.from({length: numColumns - 9}, (_, i) => i + 9);
+
+  $('.table').DataTable({
+    "pageLength": 20,
+    "columnDefs": [
+      { "orderable": false, "targets": nonSortableColumns },
+      { "className": "center-align", "targets": [4,5,6,7] } // zero-based col index
+    ]
   });
+});
 </script>
 {% endblock %}

@@ -176,10 +176,8 @@ def fb(request, yy):
 
 def _get_fb_info():
     today = date.today()
-    start_fb = f'FB{str(today.year)[-2:]}{today.month*2:02d}'
+    start_fb = f'FB{str(today.year)[-2:]}{today.month*2-1:02d}'
     sprints = Sprint.objects.filter(fb__gte=start_fb).order_by('fb')[:3]
-    #print(sprints)
-    #print(start_fb)
 
     for sprint in sprints:
         if (today >= sprint.start_date and today <= sprint.end_date):
@@ -192,10 +190,12 @@ def _get_fb_info():
             # else:
             #     return (sprint.fb + '.1', sprint_day, passed_percent)
             return (sprint.fb, sprint_day, passed_percent)
+    
+    print(f"ERROR: Strange that current sprint not found from {[sprint.fb for sprint in sprints]}")
+    return ('N/A', 0, 0)
 
-    return ('N/A', 0)
-
-
+# start_fb, end_fb in the string format without "FB" prefix, eg: '2325', '2401'
+# return all the fbs in between as a string list, eg: ['2325', '2326', '2401']
 def _get_fbs(start_fb, end_fb):
     if end_fb > end_fb:
         return []
@@ -205,7 +205,7 @@ def _get_fbs(start_fb, end_fb):
         fbs = [start_fb]
         start = int(start_fb)
         while start < int(end_fb):
-            if start%100 == 26:
+            if start%100 == 26: # 26 fbs in each year
                 start = (int(start/100) + 1) * 100 + 1
             else:
                 start += 1

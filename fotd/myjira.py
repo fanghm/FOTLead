@@ -43,6 +43,7 @@ def _queryJira(jql_str, field_dict):
 def queryJiraCaItems(fid):
     field_dict = {
         # 'Item ID': 'customfield_38702',
+        'Summary': 'summary',
         'Competence_Area': 'customfield_38690',
         'Activity_Type': 'customfield_38750',
         'Assignee': 'assignee',

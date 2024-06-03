@@ -165,3 +165,4 @@ django.md
 ideas.md
 init_db.py
 init/*.html
+init/*.json

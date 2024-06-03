@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% load tz %}
+{% now "Y-m-d" as today %}
+
 {% block css %}
   <style>
     .edit-icon {
@@ -9,7 +12,7 @@
 {% endblock %}
 
 {% block content %}
-  <h1 class="text-center">{{ feature }}: {{feature.name}}</h1>
+  <h1 class="text-center">{{ feature }}: {{feature.name|safe}}</h1>
   <div class="section">
     <div class="header">
       <div style="display: flex; align-items: center;">
@@ -73,7 +76,7 @@
           <input type="text" name="title" placeholder="Add new task" style="display: inline-block; width: 30%;">
 
           <label for="owner" style="display: inline-block;">Owner:</label>
-          <input type="text" name="owner" style="display: inline-block;">
+          <input type="text" name="owner" value="FOTL" style="display: inline-block;">
 
           <label for="due" style="display: inline-block;">Due Date:</label>
           <input type="date" name="due" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;">
@@ -89,13 +92,12 @@
 
         {% if tasks %}
           {% for task in tasks %}
-            <li><a href="/task/{{ task.id }}/">{{ task.title }}</a> - {{task.owner}} | 
-              {% load tz %}
-              {% if task.due > timezone.now %}
+            <li><a href="/task/{{ task.id }}/">{{ task.title|urlizetrunc:30 }}</a> - {{task.owner}} | 
+              {% if task.due < today %}
                 <span style="color: red;">{{ task.due }}</span>
               {% else %}
                 {{ task.due }}
-              {% endif %}              
+              {% endif %}
               <button class="addTaskStatusBtn" data-task-id="{{ task.id }}">+</button>
             </li>
 
@@ -200,7 +202,7 @@
         var featureId = '{{ feature.id }}';
         var date_str = $(this).find('input[name="date"]').val();
         var update_text = $(this).find('input[name="status"]').val();
-        $(this).find('input[name="status"]').val(''); // 重置status input box中的内容
+        $(this).find('input[name="status"]').val('');
 
         $.ajax({
           url: '/ajax_feature_status/' + featureId + '/',
@@ -242,8 +244,8 @@
       var date_str = $(this).find('input[name="date"]').val();
 
       status_obj = $(this).find('input[name="status"]');
-      var update_text = status_obj.val(); // 获取状态更新
-      status_obj.val(''); // 重置status input box中的内容
+      var update_text = status_obj.val();
+      status_obj.val('');
 
       $.ajax({
         url: '/ajax_task_status/' + taskId + '/',

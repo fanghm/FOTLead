@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block css %}
   <link rel="stylesheet" href="{% static 'fotd/styles.css' %}">	
@@ -41,7 +42,6 @@
   </nav-->
   <h1 class="logo">FOTL Dashboard</h1>
   <main class="main-content">
-    <!-- 表格 -->
     <table id="feature-table">
       <thead>
         <tr>
@@ -63,18 +63,28 @@
           <tr>
             <td>{{ f.release }}</td>
             <td>{{ f.id|ljust:"11" }}</td>
-            <td>{{ f.name }}</td>
+            <td>{{ f.name|safe }}</td>
             <td>{{ f.customer }}</td>
             <td>{{ f.priority|floatformat:"0g" }}</td>
             <td>{{ f.milestone }}</td>
-            <td>{{ f.phase }}</td>
+
+            {% if f.phase == 'Testing' and f.rep_link|startswith:"http" %}
+              <td><a href="{{ f.rep_link }}"  target="_blank">{{ f.phase }}</a></td>
+            {% else %}
+              <td>{{ f.phase }}</td>
+            {% endif %}
+
             <td style="text-align: center;">
-              <div style="background-color: {{ f.risk }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;"></div>
+              {% if f.risk != 'Green' %}
+                <div style="background-color: {{ f.risk }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;" title="{{ f.risk_detail }}"></div>
+              {% else %}
+                <div style="background-color: {{ f.risk }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;"></div>
+              {% endif %}
             </td>
             <td>
               <a href="{% url 'fotd:backlog' f.id %}"><img src="{% static 'pix/jira.png' %}" alt="Jira" width="32" height="32"></a>&nbsp;
 
-              {% if 'http' in f.gantt_link %}
+              {% if f.gantt_link|startswith:"http" %}
                 <a href="{{ f.gantt_link }}" target="_blank"><img src="{% static 'pix/gantt.svg' %}" alt="Gantt" width="32" height="32"></a>&nbsp;
               {% endif %}
             </td>
@@ -99,8 +109,8 @@
 
   <div class="center">
     <input type="text" id="prId" placeholder="Search a Pronto" >
-    <input type="text" id="featId" placeholder="Search a feature" >
-    <input type="text" id="featureId" placeholder="Search a feature's CA items" >
+    <input type="text" id="featId" placeholder="Show backlog structure of a feature" style="min-width: 330px;">
+    <input type="text" id="featureId" placeholder="List CA items of a feature" >
   </div>
 
   <div class="progress">
