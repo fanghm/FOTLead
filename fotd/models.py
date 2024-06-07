@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.validators import MaxValueValidator
 import datetime
+# from django.contrib.postgres.fields import JSONField # for PostgreSQL
+from django.db.models import JSONField  # for SQLite
 
 MILESTONE_CHOICES = [
     ('N/A',    'N/A'),
@@ -104,6 +106,7 @@ class FeatureRoles(models.Model):
 class TeamMember(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     team = models.CharField(max_length=50)
+    apo = models.CharField(max_length=50, blank=True)
     role = models.CharField(max_length=20, choices=TEAM_ROLES)
     name = models.CharField(max_length=100)
     comment = models.TextField(blank=True)
@@ -119,11 +122,12 @@ class Task(models.Model):
     contact = models.CharField(max_length=100, blank=True)
     due = models.DateField(default=datetime.date.today() + datetime.timedelta(days=7))
     status = models.CharField(max_length=11, default='Ongoing', choices=TASK_STATUS)
-    mail = models.CharField(max_length=50, blank=True)
     chat = models.CharField(max_length=50, blank=True)
+    mail = models.CharField(max_length=50, blank=True)
     meeting = models.CharField(max_length=50, blank=True)
     
-    relate_to = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
+    #relate_to = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
+    stickie = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -158,3 +162,17 @@ class Sprint(models.Model):
 
     def __str__(self):
         return f'{self.fb}: {self.start_date.strftime("%m/%d")} - {self.end_date.strftime("%m/%d")}'
+
+# Save backlog queries from JIRA
+class BacklogQuery(models.Model):
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    query_time = models.DateTimeField(auto_now_add=True)
+    query_result = JSONField()
+    display_fields = JSONField()
+    start_earliest = models.CharField(max_length=4, blank=True)
+    end_latest = models.CharField(max_length=4, blank=True)
+    changes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-query_time']
+        verbose_name_plural = "Backlog Queries"

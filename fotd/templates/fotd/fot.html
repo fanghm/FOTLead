@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block css %}
+  <style>
+    .edit-icon {
+      display: inline-block;
+      transform: rotateZ(90deg);
+    }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="display: flex; align-items: center;"><h2>{{fid}}</h2><a href="{% url 'fotd:fot_add' fid %}"><span class="edit-icon">&#X270E;</span></a></div>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>PDM</th>
+                <th>APM</th>
+                <th>FOT Lead</th>
+                <th>CFAM Lead</th>
+                <th>LESE</th>
+                <th>FTL</th>
+                {% if role.comment %}
+                <th>Comment</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% if role %}
+            <tr>
+                <td>{{ role.pdm }}</td>
+                <td>{{ role.apm }}</td>
+                <td>{{ role.fot_lead }}</td>
+                <td>{{ role.cfam_lead }}</td>
+                <td>{{ role.lese }}</td>
+                <td>{{ role.ftl }}</td>
+                {% if role.comment %}
+                <td>{{ role.comment }}</td>
+                {% endif %}
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7">No roles found, pls <a href="{% url 'fotd:fot_add' fid %}">add</a></td>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <h2>Team Members</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Team</th>
+                <th>APO</th>
+                <th>Role</th>
+                <th>Name</th>
+                <th>Comment</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in team_members %}
+            <tr>
+                <td>{{ member.team }}</td>
+                <td>{{ member.apo }}</td>
+                <td>{{ member.role }}</td>
+                <td>{{ member.name }}</td>
+                <td>{{ member.comment }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No team members found, pls <a href="{% url 'fotd:fot_add' fid %}">add</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

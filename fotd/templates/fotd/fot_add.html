@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block css %}
+  <style>
+  form {
+    margin: 30px;
+  }
+</style>
+{% endblock %}
+{% block content %}
+  <br><h2>{{fid}} Main Roles</h2>
+  <form id="featureRolesForm" method="post" data-feature_id="{{fid}}">
+    {% csrf_token %}
+    <div class="form-row">
+      <div class="form-group col-md-4">
+        <label for="pdm">PDM</label>
+        <input type="text" class="form-control" id="pdm" name="pdm", value="{% if role and role.pdm %}{{role.pdm}}{% endif %}">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="apm">APM</label>
+        <input type="text" class="form-control" id="apm" name="apm", value="{% if role and role.apm %}{{role.apm}}{% endif %}">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="cfam_lead">CFAM Lead</label>
+        <input type="text" class="form-control" id="cfam_lead" name="cfam_lead", value="{% if role and role.cfam_lead %}{{role.cfam_lead}}{% endif %}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group col-md-4">
+        <label for="fot_lead">FOT Lead</label>
+        <input type="text" class="form-control" id="fot_lead" name="fot_lead", value="{% if role and role.fot_lead %}{{role.fot_lead}}{% endif %}">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="lese">LESE</label>
+        <input type="text" class="form-control" id="lese" name="lese", value="{% if role and role.lese %}{{role.lese}}{% endif %}">
+      </div>
+      <div class="form-group col-md-4">
+        <label for="ftl">FTL</label>
+        <input type="text" class="form-control" id="ftl" name="ftl", value="{% if role and role.ftl %}{{role.ftl}}{% endif %}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="comment">Comment</label>
+      <textarea class="form-control" id="comment" name="comment">{% if role and role.comment %}{{role.comment}}{% endif %}</textarea>
+    </div>
+    <button type="submit" id="addFeatureRoles" class="btn btn-primary">Submit</button>
+  </form>
+
+  <br><h2>FOT Members</h2>
+  <form id="teamMemberForm" method="post" data-feature_id="{{fid}}">
+      {% csrf_token %}
+      {% for member in team_members %}
+      <div class="teamMemberRow form-row" data-row-id="{{ forloop.counter0 }}" data-db-id="{{ member.id }}>
+        <div class="form-group col-md-2">
+          <label for="role{{ forloop.counter0 }}">Role</label>
+          <select class="form-control" id="role{{ forloop.counter0 }}" name="role">
+            <option value="CFAM Coauthor" {% if member.role == "CFAM Coauthor" %}selected{% endif %}>CFAM Coauthor</option>
+            <option value="CFAM Contributor" {% if member.role == "CFAM Contributor" %}selected{% endif %}>CFAM Contributor</option>
+            <option value="FOT Member" {% if member.role == "FOT Member" %}selected{% endif %}>FOT Member</option>
+            <option value="Other Role" {% if member.role == "Other Role" %}selected{% endif %}>Other Role</option>
+          </select>
+        </div>
+        <div class="form-group col-md-2">
+          <label for="team{{ forloop.counter0 }}">Competence Area</label>
+          <input type="text" class="form-control" id="team{{ forloop.counter0 }}" name="team" value="{{ member.team }}">
+        </div>
+        <div class="form-group col-md-2">
+          <label for="apo{{ forloop.counter0 }}">APO / Nominator</label>
+          <input type="text" class="form-control" id="apo{{ forloop.counter0 }}" name="apo" value="{{ member.apo }}">
+        </div>
+        <div class="form-group col-md-3">
+          <label for="name{{ forloop.counter0 }}">Name</label>
+          <input type="text" class="form-control" id="name{{ forloop.counter0 }}" name="name" value="{{ member.name }}">
+        </div>
+        <div class="form-group col-md-3">
+          <label for="comment{{ forloop.counter0 }}">Comment</label>
+          <input type="text" class="form-control" id="comment{{ forloop.counter0 }}" name="comment" value="{{ member.comment }}">
+        </div>
+      </div>
+      {% empty %}
+      <div class="teamMemberRow form-row" data-row-id="0">
+        <div class="form-group col-md-2">
+          <label for="role0">Role</label>
+          <select class="form-control" id="role0" name="role">
+            <option value="CFAM Coauthor">CFAM Coauthor</option>
+            <option value="CFAM Contributor">CFAM Contributor</option>
+            <option value="FOT Member" selected>FOT Member</option>
+            <option value="Other Role">Other Role</option>
+          </select>
+        </div>
+        <div class="form-group col-md-2">
+          <label for="team0">Competence Area</label>
+          <input type="text" class="form-control" id="team0" name="team">
+        </div>
+        <div class="form-group col-md-2">
+          <label for="apo0">APO / Nominator</label>
+          <input type="text" class="form-control" id="apo0" name="apo">
+        </div>
+        <div class="form-group col-md-3">
+          <label for="name0">Name</label>
+          <input type="text" class="form-control" id="name0" name="name">
+        </div>
+        <div class="form-group col-md-3">
+          <label for="comment0">Comment</label>
+          <input type="text" class="form-control" id="comment0" name="comment">
+        </div>
+      </div>
+      {% endfor %}
+      <button type="button" id="addRow" class="btn btn-info">One more team</button>
+      <button type="submit" id="addFotMemebers" class="btn btn-primary">Submit</button>
+  </form>
+  
+  <script>
+    $('#addRow').click(function() {
+      var lastRow = $('.teamMemberRow').last();
+      var newRow = lastRow.clone(true);
+      var newRowId = parseInt(lastRow.attr('data-row-id')) + 1;
+      newRow.attr('data-row-id', newRowId);
+      newRow.find('label').remove();
+      newRow.find('input, select').each(function() {
+        var id = $(this).attr('id');
+        newId = id.replace(/\d+$/, newRowId);
+        $(this).attr('id', newId);
+    
+        // copy the team/role values of last row to the new row, for convenience
+        var name = $(this).attr('name');
+        if (name == "name" || name == "comment") {
+          $(this).val("");
+        }
+      });
+      newRow.insertBefore($(this));
+    });
+
+    $('#addFeatureRoles').click(function(event) {
+      event.preventDefault();
+      var formData = $('#featureRolesForm').serialize();
+      var fid = $('#featureRolesForm').attr('data-feature_id');
+    
+      $.ajax({
+        type: 'POST',
+        url: '/ajax_add_feature_roles/' + fid + '/',
+        data: formData,
+        success: function(response) {
+          alert('The roles has been updated successfully!');
+          // reset the input boxes here
+          // $('#featureRolesForm').find('input, textarea').each(function() {
+          //   this.value = '';
+          // });
+        },
+        error: function(error) {
+          alert('An error occurred: ' + error);
+        }
+      });
+    });
+
+    $('#addFotMemebers').click(function(event) {
+      event.preventDefault();    
+      var formData = $('#teamMemberForm').serializeArray();
+      var fid = $('#teamMemberForm').attr('data-feature_id');
+
+      var teamMembers = [];
+      $('.teamMemberRow').each(function(index, element) {
+        var teamMember = {};
+        $(element).find('input, select').each(function() {
+          teamMember[this.name] = this.value;
+        });
+        teamMembers.push(teamMember);
+      });
+    
+      $.ajax({
+        type: 'POST',
+        url: '/ajax_add_fot_members/' + fid + '/',
+        data: JSON.stringify(teamMembers),
+        contentType: 'application/json',
+        success: function(response) {
+          alert('The FOT member has been added successfully!');
+          // reset the input boxes here
+          // $('.teamMemberRow').each(function(index, element) {
+          //   $(element).find('input, select').each(function() {
+          //     this.value = '';
+          //   });
+          // });
+        },
+        error: function(error) {
+          alert('An error occurred: ' + error);
+        }
+      });
+    });
+  </script>
+{% endblock %}

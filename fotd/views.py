@@ -1,11 +1,12 @@
-from django.shortcuts import render
-from django.shortcuts import render
-from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint
-from datetime import date, datetime, timedelta
+import json
 import logging
+from datetime import date, datetime, timedelta
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonResponse
+from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
+from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery
 from .myjira import queryJiraCaItems
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -213,19 +214,140 @@ def _get_fbs(start_fb, end_fb):
         return fbs
 
 def backlog(request, fid):
-    ca_items, sprint_span = queryJiraCaItems(fid)
-    current_fb = request.session['fb'][2:]
-    if sprint_span[0] < current_fb:
-        sprints = _get_fbs(current_fb, sprint_span[1])
+    first_query = False
+    query = BacklogQuery.objects.filter(feature__id=fid).first()
+    if query is None:
+        first_query = True
+        print(f"{fid}: first query")
     else:
-        sprints = _get_fbs(*sprint_span)
+        result = query.query_result
+        start_earliest = query.start_earliest
+        end_latest = query.end_latest
+        display_fields = query.display_fields
+        print(f"{fid}: last query at {query.query_time}: {len(result)} items")
+
+    new_added_keys = endfb_changed_keys = []
+    if request.GET.get('refresh') or first_query:   # query form JIRA
+        (result, start_earliest, end_latest, display_fields) = queryJiraCaItems(fid)
+
+        changes = ''
+        if not first_query:
+            if len(query.query_result) != len(result):
+                # find out new added items
+                new_added_keys = [item['Key'] for item in result if not any(item['Key'] == old_item['Key'] for old_item in query.query_result)]
+                print(f"New added keys: {new_added_keys}")
+                changes += f"New added: {new_added_keys};"
+
+            # find out End_FB changed items
+            endfb_changed_keys = [item['Key'] for item in result if any(item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB'] for old_item in query.query_result)]
+            print(f"End_FB changed keys: {endfb_changed_keys}")
+            changes += f"EndFB changed: {endfb_changed_keys}"
+
+        mandatory_fields = {
+            'feature_id': fid,
+            'query_result': result,
+            'display_fields': display_fields,
+        }
+        
+        optional_fields = {
+            'start_earliest': start_earliest,
+            'end_latest': end_latest,
+            'changes': changes,
+        }
+        
+        # Remove optional fields with value None or empty string
+        optional_fields = {k: v for k, v in optional_fields.items() if v is not None and v != ''}
+        
+        # Create the db object
+        db_object = BacklogQuery.objects.create(**mandatory_fields, **optional_fields)
+
+    current_fb = request.session['fb'][2:]
+    if start_earliest is None or end_latest is None:    # no plan at all, for a new feature
+        sprints = [current_fb]
+    elif start_earliest < current_fb:
+        sprints = _get_fbs(current_fb, end_latest)
+    else:
+        sprints = _get_fbs(start_earliest, end_latest)
 
     context = {
         'fid': fid,
-        'ca_items': ca_items,
-        'fields': ca_items[0].keys() if ca_items else [],
-        'sprint_span': sprints,
+        'result': result,
+        'display_fields': display_fields,
+        'new_added_keys': new_added_keys,
+        'endfb_changed_keys': endfb_changed_keys,
+        'sprints': sprints,
         'link_prefix': 'https://jiradc.ext.net.nokia.com/browse/',
-        'Committed': ca_items[0]['RC_Status'].startswith('Committed') if ca_items and ca_items[0]['RC_Status'] else False,
         }
     return render(request, 'fotd/backlog.html', context)
+
+def fot(request, fid):
+    try:
+        feature_roles = FeatureRoles.objects.get(feature__id=fid)
+    except ObjectDoesNotExist:
+        feature_roles = None
+
+    context = {
+        'fid': fid,
+        'role': feature_roles,
+        'team_members': TeamMember.objects.filter(feature__id=fid)
+    }
+
+    if feature_roles:
+        return render(request, 'fotd/fot.html', context)
+    else:
+        return render(request, 'fotd/fot_add.html', context)
+
+def fot_add(request, fid):
+    try:
+        feature_roles = FeatureRoles.objects.get(feature__id=fid)
+    except ObjectDoesNotExist:
+        feature_roles = None
+
+    context = {
+        'fid': fid,
+        'role': feature_roles,
+        #'role': get_object_or_404(FeatureRoles, feature__id=fid),
+        'team_members': TeamMember.objects.filter(feature__id=fid),
+    }
+    return render(request, 'fotd/fot_add.html', context)
+
+@csrf_exempt
+def ajax_add_feature_roles(request, fid):
+    if request.method == 'POST':
+        feature = Feature.objects.get(id=fid)
+        new_role, created = FeatureRoles.objects.update_or_create(
+            feature=feature,
+            defaults={
+                'pdm': request.POST.get('pdm'),
+                'apm': request.POST.get('apm'),
+                'cfam_lead': request.POST.get('cfam_lead'),
+                'fot_lead': request.POST.get('fot_lead'),
+                'lese': request.POST.get('lese'),
+                'ftl': request.POST.get('ftl'),
+                'comment': request.POST.get('comment')
+            }
+        )
+
+        return JsonResponse({'status': 'success'})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+        
+@csrf_exempt
+def ajax_add_fot_members(request, fid):
+    feature = Feature.objects.get(id=fid)
+
+    if request.method == 'POST':
+        team_members = json.loads(request.body)
+        for team_member in team_members:
+            new_member = TeamMember(
+                team = team_member['team'],
+                apo = team_member['apo'],
+                role = team_member['role'],
+                name = team_member['name'],
+                comment = team_member['comment'],
+                feature = feature
+            )
+            new_member.save()
+        return JsonResponse({'status': 'success'})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})

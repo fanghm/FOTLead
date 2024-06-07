@@ -9,6 +9,9 @@
     .progress {
       height: 30px;
     }
+    .new_added {
+      font-weight: bold;
+    }
     .delayed {
       background-color: red;
     }
@@ -29,49 +32,54 @@
   <table class="table table-striped">
     <thead>
       <tr>
-        {% for field_name in fields %}
-          {% if field_name == "Summary" %}
-            {##}
-          {% elif Committed or field_name != "RC_FB" %}
-            <th>{{ field_name|replace:"_, " }}</th>
-          {% endif %}
+        {% for field_name in display_fields %}
+          <th>{{ field_name|replace:"_, " }}</th>
         {% endfor %}
 
-        {% for fb in sprint_span %}
+        {% for fb in sprints %}
           <th> {{ fb }} </th>
         {% endfor %}
       </tr>
     </thead>
     <tbody>
-      {% for item in ca_items %}
+      {% for item in result %}
         <tr>
           {% for field_name, field_value in item.items %}
-            {% if field_name == "Summary" %}
-              {# only show as a tip of the key as the text is too long #}
+            {% if field_name not in display_fields %}
+              {# dont show #}
+
             {% elif field_name == "Key" %}
-              <td class="no-wrap"><a href="{{link_prefix}}{{field_value}}" target="_blank" title="{{item.Summary}}">{{ field_value }}</a></td>
+              <td class="no-wrap {% if field_value in new_added_keys %}new_added{% endif %}">
+                <a href="{{link_prefix}}{{field_value}}" target="_blank" title="{{item.Summary}}">{{ field_value }}</a>
+              </td>
+
             {% elif field_name == "Progress" %}
               <td class="no-wrap">
                 <div class="progress">
-                  <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
+                  <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" 
+                    style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
               </td>
+
+            {% elif field_name == "End_FB" %}
+              <td class="no-wrap {% if item.Key in endfb_changed_keys %}endfb_changed{% endif %}">{% if field_value %}{{ field_value }}{% endif %}</td>
+              
             {% elif field_name == "RC_FB" %}
-              {% if Committed and field_value and item.End_FB %}
+              {% if field_value and item.End_FB %}
                 <td class="no-wrap {% if item.End_FB > field_value %}delayed{% endif %}">{{ field_value }}</td>
-              {% elif Committed and field_value %}
-                <td class="no-wrap">{{ field_value }}</td>
               {% else %}
-                {# don't show this field if not committed, must align w/ thead #}
+                <td class="no-wrap">{% if field_value %}{{ field_value }}{% endif %}</td>
               {% endif %}
+
             {% elif field_name == "Original_Estimate" or field_name == "Time_Remaining" %}
               <td class="no-wrap">{% if field_value %}{{ field_value|rjust:"6" }}{% endif %}</td>
+
             {% else %}
               <td class="no-wrap">{% if field_value %}{{ field_value }}{% endif %}</td>
             {% endif %}
           {% endfor %}
 
-          {% for fb in sprint_span %}
+          {% for fb in sprints %}
             {% if fb <= item.End_FB %}
               <td style="background-color: limegreen;"></td>
             {% else %}

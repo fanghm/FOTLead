@@ -7,10 +7,12 @@ def _queryJira(jql_str, field_dict):
     result = []
     start_earliest = None
     end_latest = None
+    all_committed = True
     for issue in json_result['issues']:
         issue_dict = {'Key': issue['key']}
         for field_name, custom_name in field_dict.items():
             value = issue['fields'][custom_name]
+
             if not value:
                 issue_dict[field_name] = None
             elif field_name in ('Competence_Area', 'Activity_Type', 'RC_Status', 'RC_FB'):
@@ -30,15 +32,24 @@ def _queryJira(jql_str, field_dict):
         else:
             issue_dict['Progress'] = 0
         
+        # statistics 
         if start_earliest is None or (issue_dict['Start_FB'] and issue_dict['Start_FB'] < start_earliest):
             start_earliest = issue_dict['Start_FB']
 
         if end_latest is None or (issue_dict['End_FB'] and issue_dict['End_FB'] > end_latest):
             end_latest = issue_dict['End_FB']
             
+        if not issue_dict['RC_FB'] or not issue_dict['RC_FB'].startswith('Committed'):
+            all_committed = False
+
         result.append(issue_dict)
 
-    return result, (start_earliest, end_latest)
+    keys_to_remove = ['Summary']
+    if not all_committed:
+        keys_to_remove.append('RC_FB')
+    fields_to_display = [k for k in result[0].keys() if k not in keys_to_remove] if result else []
+
+    return (result, start_earliest, end_latest, fields_to_display)
 
 def queryJiraCaItems(fid):
     field_dict = {
@@ -53,6 +64,10 @@ def queryJiraCaItems(fid):
         'Time_Remaining': 'customfield_43291',
         'RC_Status': 'customfield_38728',
         'RC_FB': 'customfield_43490',
+        #'FB Committed Status': 'customfield_38729',
+        #'Stretch Goal Reason': 'customfield_38730',
+        #'Risk Status': 'customfield_38731',
+        #'Risk Details': 'customfield_38732',
     }
 
     jql_str = f'''("Feature ID" ~ {fid}) and issuetype = "Competence Area" AND status not in (done, obsolete) order by "Item ID" '''

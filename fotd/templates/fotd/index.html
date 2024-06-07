@@ -54,7 +54,7 @@
           <th data-resizable-column-id="phase">Phase</th>
           <th data-resizable-column-id="risk">Risk</th>
           <th data-resizable-column-id="links">Links</th>
-          <th data-resizable-column-id="action">Action</th>
+          <th data-resizable-column-id="action">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -82,8 +82,12 @@
               {% endif %}
             </td>
             <td>
-              <a href="{% url 'fotd:backlog' f.id %}"><img src="{% static 'pix/jira.png' %}" alt="Jira" width="32" height="32"></a>&nbsp;
-
+              <a href="{% url 'fotd:backlog' f.id %}" title="Backlog">
+                <img src="{% static 'pix/jira.png' %}" alt="Backlog" width="32" height="32">
+              </a>&nbsp;
+              <a href="{% url 'fotd:fot' f.id %}" title="FOT">
+                <img src="{% static 'pix/team.png' %}" alt="FOT" width="32" height="32">
+              </a>&nbsp;
               {% if f.gantt_link|startswith:"http" %}
                 <a href="{{ f.gantt_link }}" target="_blank"><img src="{% static 'pix/gantt.svg' %}" alt="Gantt" width="32" height="32"></a>&nbsp;
               {% endif %}
@@ -108,7 +112,7 @@
   </main>
 
   <div class="center">
-    <input type="text" id="prId" placeholder="Search a Pronto" >
+    <input type="text" id="prId" placeholder="Search a Pronto" autocomplete="on">
     <input type="text" id="featId" placeholder="Show backlog structure of a feature" style="min-width: 330px;">
     <input type="text" id="featureId" placeholder="List CA items of a feature" >
   </div>
@@ -117,6 +121,12 @@
     <div class="progress-bar" role="progressbar" style="width: {{ passed_percent }}%;" aria-valuenow="{{ sprint_day }}" aria-valuemin="0" aria-valuemax="14">{{ request.session.fb|slice:6 }} - day {{ sprint_day }} </div>
   </div>
 
+  <div class="center">
+    Program Guidelines:
+    <a href="https://nokia.sharepoint.com/sites/ran24r3/SitePages/24R3-Planning-Guideline.aspx" target="_blank">24R3</a>
+    <a href="https://nokia.sharepoint.com/sites/ran25r1/SitePages/25R1-Planning-Guidelines.aspx" target="_blank">25R1</a>
+    <a href="https://nokia.sharepoint.com/sites/ran25r2/SitePages/25R2-Planning-Guidelines.aspx" target="_blank">25R2</a>
+  </div>
 {% endblock %}
 
 {% block bottom %}

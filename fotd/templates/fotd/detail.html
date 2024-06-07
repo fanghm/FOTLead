@@ -17,7 +17,7 @@
     <div class="header">
       <div style="display: flex; align-items: center;">
         <h2>Basic Info</h2>
-        <a href="/feature/{{ feature.id }}/"><span class="edit-icon">&#X270E;</span></a>
+        <a href="{% url 'fotd:feature' feature.id %}"><span class="edit-icon">&#X270E;</span></a>
       </div>
     </div>
 
@@ -45,7 +45,7 @@
           {% csrf_token %}
           <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
           <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
-          <button type="submit">Add</button>
+          <button type="submit" class="btn btn-primary">Add</button>
           <button type="button" class="cancelUpdateBtn">Cancel</button>
         </form>
 
@@ -129,6 +129,15 @@
 {% block bottom %}
   <script>
     $(document).ready(function(){
+      $('form').each(function() {
+        $(this).on('keypress', function(e) {
+          var keyCode = e.keyCode || e.which;
+          if (keyCode === 13) {  // 13 is the ASCII code for the Enter key
+            e.preventDefault();
+            $(this).submit();
+          }
+        });
+      });
       // clicking edit button to expand the row to display input interface
       $('.addTaskBtn').click(function(){
         $(this).hide();
