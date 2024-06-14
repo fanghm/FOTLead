@@ -6,7 +6,7 @@ from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonRe
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
-from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery
+from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery, ProgramBoundary
 from .myjira import queryJiraCaItems
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -57,9 +57,9 @@ def detail(request, fid):
 def feature(request, fid):
     feature = Feature.objects.get(id=fid)
 
-    # Create a context dictionary with the fetched data
     context = {
         'feature': feature,
+        'ProgramBoundary': ProgramBoundary.objects.filter(release=feature.release),
         }
     return render(request, 'fotd/feature.html', context)
 
@@ -76,6 +76,8 @@ def ajax_feature_update(request, fid):
         feature = Feature.objects.get(id=fid)
         for key, value in request.POST.items():
             if hasattr(feature, key):
+                if key == 'boundary':
+                    value = ProgramBoundary.objects.get(id=value)
                 setattr(feature, key, value)
 
         feature.save()
@@ -213,21 +215,53 @@ def _get_fbs(start_fb, end_fb):
             fbs.append(str(start))
         return fbs
 
+# rules:
+# Activity type - Entity Specification: sw_done
+# Activity type - SW: sw_done
+# Activity type - CuDo: cudo
+# Activity type - System Testing, except CA is PET/FIVE: st_done
+# CA is VAL_PET/VAL_FIVE: pet_five_done
+# return: {key, boundary_fb}
+def check_plan_fitting(result, boundary):
+    not_fitting_items = {}
+    for item in result:
+        if item['Activity_Type'] in ('SW', 'Entity Specification') and item['End_FB'] > boundary.sw_done:
+            not_fitting_items[item['Key']] = boundary.sw_done
+        elif item['Activity_Type'] == 'CuDo' and item['End_FB'] > boundary.cudo:
+            not_fitting_items[item['Key']] = boundary.cudo
+        elif item['Activity_Type'] == 'System Testing':
+            if item['Competence_Area'] in ('VAL_PET', 'VAL_FIVE'):
+                if(item['End_FB'] > boundary.pet_five_done):
+                    not_fitting_items[item['Key']] = boundary.pet_five_done
+            else:
+                if(item['End_FB'] > boundary.st_done):
+                    not_fitting_items[item['Key']] = boundary.st_done
+        else:
+            #done nothing for other activity types
+            pass
+
+    print(f"not_fitting_items: {not_fitting_items}")
+    return not_fitting_items
+
 def backlog(request, fid):
     first_query = False
     query = BacklogQuery.objects.filter(feature__id=fid).first()
     if query is None:
         first_query = True
-        print(f"{fid}: first query")
+        #print(f"{fid}: first query")
     else:
         result = query.query_result
         start_earliest = query.start_earliest
         end_latest = query.end_latest
         display_fields = query.display_fields
-        print(f"{fid}: last query at {query.query_time}: {len(result)} items")
-
-    new_added_keys = endfb_changed_keys = []
-    if request.GET.get('refresh') or first_query:   # query form JIRA
+        #print(f"{fid}: last query at {query.query_time}: {len(result)} items")
+    
+    jira_query = False
+    new_added_keys = []
+    endfb_changed_items = {}
+    if request.GET.get('refresh') or first_query:
+        jira_query = True
+        print(f"{fid}: query from JIRA")
         (result, start_earliest, end_latest, display_fields) = queryJiraCaItems(fid)
 
         changes = ''
@@ -236,12 +270,16 @@ def backlog(request, fid):
                 # find out new added items
                 new_added_keys = [item['Key'] for item in result if not any(item['Key'] == old_item['Key'] for old_item in query.query_result)]
                 print(f"New added keys: {new_added_keys}")
-                changes += f"New added: {new_added_keys};"
+                changes += f"New added: {new_added_keys}; "
 
             # find out End_FB changed items
-            endfb_changed_keys = [item['Key'] for item in result if any(item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB'] for old_item in query.query_result)]
-            print(f"End_FB changed keys: {endfb_changed_keys}")
-            changes += f"EndFB changed: {endfb_changed_keys}"
+            endfb_changed_items = {item['Key']: (old_item['End_FB'], item['End_FB']) 
+                                   for old_item in query.query_result 
+                                   for item in result 
+                                   if item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB']}
+            endfb_changed_str = ";".join([f"{key}: {old_endfb}->{new_endfb}" for key, (old_endfb, new_endfb) in endfb_changed_items.items()])
+            print(f"End_FB changes: {endfb_changed_str}")
+            changes += f"EndFB changes: {endfb_changed_str}"
 
         mandatory_fields = {
             'feature_id': fid,
@@ -262,7 +300,8 @@ def backlog(request, fid):
         db_object = BacklogQuery.objects.create(**mandatory_fields, **optional_fields)
 
     current_fb = request.session['fb'][2:]
-    if start_earliest is None or end_latest is None:    # no plan at all, for a new feature
+    if not (start_earliest and end_latest):   # no plan at all, for a new feature
+        print(f"{fid}: start/endfb is empty, no plan at all")
         sprints = [current_fb]
     elif start_earliest < current_fb:
         sprints = _get_fbs(current_fb, end_latest)
@@ -274,10 +313,22 @@ def backlog(request, fid):
         'result': result,
         'display_fields': display_fields,
         'new_added_keys': new_added_keys,
-        'endfb_changed_keys': endfb_changed_keys,
+        'endfb_changed_items': endfb_changed_items,
         'sprints': sprints,
+        'current_fb': current_fb,
         'link_prefix': 'https://jiradc.ext.net.nokia.com/browse/',
         }
+
+    if not jira_query:
+        context['query_time'] = query.query_time
+
+    boundary = Feature.objects.get(id=fid).boundary
+    if boundary:
+        context['boundary'] = boundary
+        not_fitting_items = check_plan_fitting(result, boundary)
+        if not_fitting_items:
+            context['not_fitting_items'] = not_fitting_items
+
     return render(request, 'fotd/backlog.html', context)
 
 def fot(request, fid):
@@ -351,3 +402,19 @@ def ajax_add_fot_members(request, fid):
         return JsonResponse({'status': 'success'})
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+def add_program_boundary(request):
+    return render(request, 'fotd/boundary.html')
+
+@csrf_exempt
+def ajax_program_boundary(request):
+    if request.method == 'POST':
+        fields = ['release', 'category', 'sw_done', 'et_ec', 'et_fer', 'et_done', 'st_ec', 'st_fer', 'st_done', 'pet_five_ec', 'pet_five_fer', 'pet_five_done', 'ta', 'cudo']
+        data = {field: request.POST.get(field).strip() for field in fields}
+
+        program_boundary = ProgramBoundary(**data)
+        program_boundary.save()
+
+        return JsonResponse({'status': 'success'})
+
+    return JsonResponse({'status': 'error'})

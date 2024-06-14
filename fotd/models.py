@@ -43,6 +43,31 @@ TEAM_ROLES = [
     ('Other Role', 'Other Role'),
 ]
 
+class ProgramBoundary(models.Model):
+    release = models.CharField(max_length=4)
+    category = models.CharField(max_length=50)
+
+    sw_done = models.CharField(max_length=4)
+    et_ec = models.CharField(max_length=4)
+    et_fer = models.CharField(max_length=4)
+    et_done = models.CharField(max_length=4)
+    st_ec = models.CharField(max_length=4)
+    st_fer = models.CharField(max_length=4)
+    st_done = models.CharField(max_length=4)
+    pet_five_ec = models.CharField(max_length=4)
+    pet_five_fer = models.CharField(max_length=4)
+    pet_five_done = models.CharField(max_length=4)
+    ta = models.CharField(max_length=4)
+    cudo = models.CharField(max_length=4)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.release} - {self.category}: SW {self.sw_done} - ST {self.st_done}'
+
+    class Meta:
+        verbose_name_plural = "Program Boundaries"
+
 # feature model
 class Feature(models.Model):
     id = models.CharField(max_length=11, primary_key=True)
@@ -51,6 +76,8 @@ class Feature(models.Model):
     release = models.CharField(max_length=20)    #LLF/e-LLF has multiple releases
     priority = models.IntegerField(validators=[MaxValueValidator(99999)])
     milestone = models.CharField(max_length=7, choices=MILESTONE_CHOICES)
+    boundary = models.ForeignKey(ProgramBoundary, on_delete=models.PROTECT, blank=True, null=True)
+
     #labels = models.CharField(max_length=100)  #Test_Heavy, LeadTribe_xxx, etc.
     phase = models.CharField(max_length=12, choices=PHASE_CHOICES, default='Planning')
     customer = models.CharField(max_length=100, blank=True)
@@ -120,14 +147,14 @@ class Task(models.Model):
     title = models.CharField(max_length=100)
     owner = models.CharField(max_length=20)
     contact = models.CharField(max_length=100, blank=True)
-    due = models.DateField(default=datetime.date.today() + datetime.timedelta(days=7))
+    due = models.DateField()
     status = models.CharField(max_length=11, default='Ongoing', choices=TASK_STATUS)
     chat = models.CharField(max_length=50, blank=True)
     mail = models.CharField(max_length=50, blank=True)
     meeting = models.CharField(max_length=50, blank=True)
     
     #relate_to = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
-    stickie = models.BooleanField(default=False)
+    top = models.BooleanField(default=False)    # top task will be shown in homepage
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

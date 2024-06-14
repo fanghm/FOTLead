@@ -18,13 +18,23 @@
     </div>
 
     <div class="form-group">
-      <label for="priority">Priority:</label>
-      <input class="form-control" type="number" name="priority" value="{{feature.priority}}">
+      <label for="milestone">Milestone:</label>
+      <input class="form-control" type="text" name="milestone" value="{{feature.milestone}}">
     </div>
 
     <div class="form-group">
-      <label for="milestone">Milestone:</label>
-      <input class="form-control" type="text" name="milestone" value="{{feature.milestone}}">
+      <label for="boundary">Applicable Program Boundary
+      (<a href="{% url 'fotd:add_program_boundary' %}" >add</a>):</label>
+      <select class="form-control" name="boundary">
+        {% for boundary in ProgramBoundary %}
+          <option value="{{ boundary.id }}" {% if feature.boundary.id == boundary.id %}selected{% endif %}>{{ boundary.category }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="priority">Priority:</label>
+      <input class="form-control" type="number" name="priority" value="{{feature.priority}}">
     </div>
 
     <div class="form-group">

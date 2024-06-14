@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load tz %}
 {% now "Y-m-d" as today %}
 
 {% block css %}
@@ -23,7 +22,9 @@
 
     <div class="content">
       <ul>
-        <li>Release: {{ feature.release }} &#09; Priority: {{ feature.priority }}</li>
+        <li><a href="{% url 'fotd:backlog' feature.id %}">Backlog</a></li>
+        <li>Release: {{ feature.release }} | Priority: {{ feature.priority }}</li>
+        <li>Applicable program boundary: {{ feature.boundary.category }}</li>
         <li>Desc: {{ feature.desc|urlize }}</li>
         <li>Text2: {{ feature.text2|escape|linebreaksbr }}</li>
         </li>

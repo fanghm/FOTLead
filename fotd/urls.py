@@ -22,6 +22,9 @@ urlpatterns = [
     path('ajax_task_delete/<tid>/', views.ajax_task_delete, name='ajax_task_delete'),
     path('ajax_task_status/<tid>/', views.ajax_task_status, name='ajax_task_status'),
     
+    path('add_program_boundary/', views.add_program_boundary, name='add_program_boundary'),
+    path('ajax_program_boundary/', views.ajax_program_boundary, name='ajax_program_boundary'),
+
     path('backlog/<fid>/', views.backlog, name='backlog'),
     path('fot/<fid>/', views.fot, name='fot'),
     path('fot_add/<fid>/', views.fot_add, name='fot_add'),

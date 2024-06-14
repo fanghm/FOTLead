@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{%block css %}
+<style>
+    #parsedData {
+        border-collapse: collapse;
+    }
+
+    #parsedData th, #parsedData td {
+        border: 1px solid black;
+        padding: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<br><h2>Program Boundary</h2>
+
+<form id="programBoundaryForm">
+    <label for="release">Release:</label>
+    <select id="release" name="release">
+        <option value="24R3">24R3</option>
+        <option value="25R1">25R1</option>
+        <option value="25R2" selected>25R2</option>
+        <option value="25R3">25R3</option>
+    </select>
+    <br>
+    <label for="copiedText">Copied text from program page:</label>
+    <textarea id="copiedText" name="copiedText" rows="10" cols="30"></textarea>
+    <span id="fieldInfo"></span>
+    <br>
+    <input type="submit" value="Save">
+</form>
+<table id="parsedData"></table>
+{% endblock %}
+
+{% block script %}
+<script>
+    $(document).ready(function() {
+        function processLines(copiedText) {
+            var lines = copiedText.split(/\s+/).filter(function(line) {
+                return line.trim() != '';
+            });
+        
+            if (lines.length > 13) {
+                var linesToCombine = lines.length - 12;
+                var combinedLine = lines.slice(0, linesToCombine).join(' ');
+                lines = [combinedLine].concat(lines.slice(linesToCombine));
+            }
+        
+            console.log(lines);
+            return lines;
+        }
+
+        $('#copiedText').on('input', function() {
+            var copiedText = $(this).val();
+            var lines = processLines(copiedText);
+                
+            if (lines.length == 13) {
+                var data = {};
+                var fields = ['Category', 'SW Done', 'ET EC', 'ET FER', 'ET Done', 'ST EC', 'ST FER', 'ST Done', 'PET/FIVE EC', 'PET/FIVE FER', 'PET/FIVE Done', 'TA', 'CuDo'];
+                for (var i = 0; i < fields.length; i++) {
+                    data[fields[i]] = lines[i];
+                }
+            
+                var table = $('#parsedData');
+                table.empty();
+            
+                var header = $('<tr>');
+                for (var field in data) {
+                    header.append($('<th>').text(field));
+                }
+                table.append(header);
+            
+                var row = $('<tr>');
+                for (var field in data) {
+                    row.append($('<td>').text(data[field]));
+                }
+                table.append(row);
+            } else {
+                $('#fieldInfo').text('Wrong field number: ' + lines.length + '!\nPlease copy a whole line from the Program boundary table.');
+            }
+        });
+
+    $('#programBoundaryForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var release = $('#release').val();
+        var copiedText = $('#copiedText').val();
+
+        var lines = processLines(copiedText);
+        if (lines.length != 13) {
+            alert('Invalid input. Please check the copied text.');
+            return;
+        }
+
+        var data = { 'release': release };
+        var fields = ['category', 'sw_done', 'et_ec', 'et_fer', 'et_done', 'st_ec', 'st_fer', 'st_done', 'pet_five_ec', 'pet_five_fer', 'pet_five_done', 'ta', 'cudo'];
+        for (var i = 0; i < fields.length; i++) {
+            data[fields[i]] = lines[i];
+        }
+
+        $.ajax({
+            url: '/ajax_program_boundary/',
+            type: 'POST',
+            data: data,
+            success: function(response) {
+                alert('Data saved successfully.');
+            },
+            error: function(error) {
+                alert('An error occurred.');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

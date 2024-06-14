@@ -31,7 +31,7 @@
   <body>
     {% if request.path != "/" %}
     <div>
-      <a style="text-align: right;" href="javascript:history.back()">Back</a>
+      <a style="text-align: right;" href="/">Home</a>&nbsp;{% block nav_link %} {% endblock %}
     </div>
     {% endif %}
 

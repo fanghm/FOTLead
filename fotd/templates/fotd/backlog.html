@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load custom_filters %}
+{% load static %}
 
 {% block css %}
   <style>
@@ -12,11 +13,18 @@
     .new_added {
       font-weight: bold;
     }
-    .delayed {
+    .delayed, .not_fitting {
       background-color: red;
+    }
+    .duesoon {
+      background-color: orange;
     }
     .center-align {
       text-align: center;
+    }
+    #boundaryTable th, #boundaryTable td {
+        border: 1px solid black;
+        padding: 5px;
     }
   </style>
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
@@ -26,8 +34,20 @@
   <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
 {% endblock %}
 
+{% block nav_link %} 
+|&nbsp;<a style="text-align: right;" href="{% url 'fotd:detail' fid %}">{{fid}}</a>
+{% endblock %}
+
 {% block content %}
-<h1>Backlog of {{fid }}</h1>
+<br>
+<div style="display: flex; align-items: baseline; margin-left: 10px;">
+  <h2>{{fid}} Backlog</h2>
+  {% if query_time %}
+  <div>&nbsp;@ {{ query_time|timesince }} ago | <a href="{{request.get_full_path}}?refresh=true">Refresh</a> |</div>
+  {% endif %}
+  &nbsp;<a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open JIRA Structure</a>
+</div>
+
 <div class="container-fluid">
   <table class="table table-striped">
     <thead>
@@ -49,8 +69,9 @@
               {# dont show #}
 
             {% elif field_name == "Key" %}
-              <td class="no-wrap {% if field_value in new_added_keys %}new_added{% endif %}">
+              <td class="no-wrap">
                 <a href="{{link_prefix}}{{field_value}}" target="_blank" title="{{item.Summary}}">{{ field_value }}</a>
+                {% if field_value in new_added_keys %}<img src="{% static 'pix/new.png' %}" alt="New added" width="32" height="32">{% endif %}
               </td>
 
             {% elif field_name == "Progress" %}
@@ -61,12 +82,22 @@
                 </div>
               </td>
 
-            {% elif field_name == "End_FB" %}
-              <td class="no-wrap {% if item.Key in endfb_changed_keys %}endfb_changed{% endif %}">{% if field_value %}{{ field_value }}{% endif %}</td>
-              
+            {% elif field_name == "End_FB" and item.Key in endfb_changed_items %}
+              <td class="no-wrap">
+                  {% if field_value %} {{ field_value }} {% else %} None {% endif %}
+                    <span style="font-size: x-small;">({% if endfb_changed_items.key.0 %} {{ endfb_changed_items.key.0 }} {% else %} None {% endif %})</span>
+              </td>
+            {% elif field_name == "End_FB" and field_value == current_fb %}
+              <td class="no-wrap duesoon">{{ field_value }}</td>
+            {% elif field_name == "End_FB" and not_fitting_items and item.Key in not_fitting_items %}
+              <td class="no-wrap not_fitting" title="Program Boundary: {{ not_fitting_items|keyvalue:item.Key }}">{{ field_value }}</td>
+
+            {% elif field_name == "RC_Status" %}
+              <td class="no-wrap" style="font-size: 0.7em;">{% if field_value %}{{ field_value }}{% endif %}</td>
+
             {% elif field_name == "RC_FB" %}
               {% if field_value and item.End_FB %}
-                <td class="no-wrap {% if item.End_FB > field_value %}delayed{% endif %}">{{ field_value }}</td>
+                <td class="no-wrap {% if item.End_FB > field_value %} delayed {% endif %}">{{ field_value }}</td>
               {% else %}
                 <td class="no-wrap">{% if field_value %}{{ field_value }}{% endif %}</td>
               {% endif %}
@@ -80,8 +111,12 @@
           {% endfor %}
 
           {% for fb in sprints %}
-            {% if fb <= item.End_FB %}
-              <td style="background-color: limegreen;"></td>
+            {% if fb >= item.Start_FB and fb <= item.End_FB %}
+              {% if not_fitting_items and item.Key in not_fitting_items and fb > not_fitting_items|keyvalue:item.Key %}
+                <td style="background-color: red;"></td>
+              {% else %}
+                <td style="background-color: limegreen;"></td>
+              {% endif %}
             {% else %}
               <td></td>
             {% endif %}
@@ -90,6 +125,47 @@
       {% endfor %}
     </tbody>
   </table>
+  {% if boundary %}
+  Applicable Program Boundary:
+  <table id="boundaryTable">
+    <thead>
+      <tr>
+        <th>Release</th>
+        <th>Category</th>
+        <th>SW Done</th>
+        <th>ET EC</th>
+        <th>ET FER</th>
+        <th>ET Done</th>
+        <th>ST EC</th>
+        <th>ST FER</th>
+        <th>ST Done</th>
+        <th>PET/Five EC</th>
+        <th>PET/Five FER</th>
+        <th>PET/Five Done</th>
+        <th>TA</th>
+        <th>CuDo</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>{{ boundary.release }}</td>
+          <td>{{ boundary.category }}</td>
+          <td>{{ boundary.sw_done }}</td>
+          <td>{{ boundary.et_ec }}</td>
+          <td>{{ boundary.et_fer }}</td>
+          <td>{{ boundary.et_done }}</td>
+          <td>{{ boundary.st_ec }}</td>
+          <td>{{ boundary.st_fer }}</td>
+          <td>{{ boundary.st_done }}</td>
+          <td>{{ boundary.pet_five_ec }}</td>
+          <td>{{ boundary.pet_five_fer }}</td>
+          <td>{{ boundary.pet_five_done }}</td>
+          <td>{{ boundary.ta }}</td>
+          <td>{{ boundary.cudo }}</td>
+        </tr>
+    </tbody>
+  </table>
+  {% endif %}
 </div>
 
 <script>
@@ -102,10 +178,25 @@ $(document).ready(function() {
 
   $('.table').DataTable({
     "pageLength": 20,
+    "lengthChange": false, // dont show "Show xx entries" by default
+    "pagingType": "simple", // use simple pagination
     "columnDefs": [
       { "orderable": false, "targets": nonSortableColumns },
       { "className": "center-align", "targets": [4,5,6,7] } // zero-based col index
-    ]
+    ],
+    "drawCallback": function(settings) {
+      var api = this.api();
+      if (api.page.info().pages <= 1) { 
+        $('#' + api.table().node().id + '_paginate').hide(); // hide pagination if only one page
+      } else {
+        $('#' + api.table().node().id + '_paginate').show();
+      }
+      if (api.page.info().recordsTotal <= 20) {
+        $('#' + api.table().node().id + '_length').hide(); // if record number less than 20, hide "Show xx entries"
+      } else {
+        $('#' + api.table().node().id + '_length').show();
+      }
+    }
   });
 });
 </script>
