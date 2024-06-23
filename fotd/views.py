@@ -32,6 +32,7 @@ def index(request):
         'features_with_task_count': features_with_task_count,
         'sprint_day': sprint_day,
         'passed_percent': passed_percent,
+        'top_tasks': Task.objects.filter(top=True, status='Ongoing'),
     }
 
     return render(request, 'fotd/index.html', context)
@@ -131,10 +132,14 @@ def ajax_task_update(request, tid):
         task = Task.objects.get(pk=tid)
         for key, value in request.POST.items():
             if hasattr(task, key):
-                setattr(task, key, value)
                 if (key == "status" and value == "Completed"):
                     done = True
-                    print(f"Task {task.title} is done")
+                elif (key == "top"):
+                    value = (value == "on")
+                else:
+                    pass
+
+                setattr(task, key, value)
 
         task.save()
 
@@ -254,6 +259,11 @@ def backlog(request, fid):
         start_earliest = query.start_earliest
         end_latest = query.end_latest
         display_fields = query.display_fields
+        rfc_ratio = query.rfc_ratio
+        committed_ratio = query.committed_ratio
+        subfeatures = query.subfeatures.split(';')
+        total_spent = query.total_spent
+        total_remaining = query.total_remaining
         #print(f"{fid}: last query at {query.query_time}: {len(result)} items")
     
     jira_query = False
@@ -262,7 +272,7 @@ def backlog(request, fid):
     if request.GET.get('refresh') or first_query:
         jira_query = True
         print(f"{fid}: query from JIRA")
-        (result, start_earliest, end_latest, display_fields) = queryJiraCaItems(fid)
+        (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = queryJiraCaItems(fid)
 
         changes = ''
         if not first_query:
@@ -285,11 +295,16 @@ def backlog(request, fid):
             'feature_id': fid,
             'query_result': result,
             'display_fields': display_fields,
+            'subfeatures': ";".join(subfeatures),
+            'total_spent': total_spent,
+            'total_remaining': total_remaining,
         }
         
         optional_fields = {
             'start_earliest': start_earliest,
             'end_latest': end_latest,
+            'rfc_ratio': rfc_ratio,
+            'committed_ratio': committed_ratio,
             'changes': changes,
         }
         
@@ -302,19 +317,22 @@ def backlog(request, fid):
     current_fb = request.session['fb'][2:]
     if not (start_earliest and end_latest):   # no plan at all, for a new feature
         print(f"{fid}: start/endfb is empty, no plan at all")
-        sprints = [current_fb]
+        display_sprints = [current_fb]
     elif start_earliest < current_fb:
-        sprints = _get_fbs(current_fb, end_latest)
+        display_sprints = _get_fbs(current_fb, end_latest)
     else:
-        sprints = _get_fbs(start_earliest, end_latest)
+        display_sprints = _get_fbs(start_earliest, end_latest)
 
     context = {
         'fid': fid,
         'result': result,
+        'subfeatures': subfeatures,
         'display_fields': display_fields,
+        'display_sprints': display_sprints,
+        'rfc_ratio': rfc_ratio,
+        'committed_ratio': committed_ratio,
         'new_added_keys': new_added_keys,
         'endfb_changed_items': endfb_changed_items,
-        'sprints': sprints,
         'current_fb': current_fb,
         'link_prefix': 'https://jiradc.ext.net.nokia.com/browse/',
         }

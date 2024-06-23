@@ -6,6 +6,11 @@
   }
 </style>
 {% endblock %}
+
+{% block nav_link %} 
+|&nbsp;<a style="text-align: right;" href="{% url 'fotd:detail' fid %}">{{fid}}</a>
+{% endblock %}
+
 {% block content %}
   <br><h2>{{fid}} Main Roles</h2>
   <form id="featureRolesForm" method="post" data-feature_id="{{fid}}">

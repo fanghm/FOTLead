@@ -109,6 +109,16 @@
         {% endfor %}
       </tbody>
     </table>
+    <div>
+      {% if top_tasks %}
+      <br><h5>Top tasks:</h5>
+      <ul>
+        {% for task in top_tasks %}
+          <li><a href="{% url 'fotd:detail' task.feature.id %}">{{ task }}</a></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
   </main>
 
   <div class="center">

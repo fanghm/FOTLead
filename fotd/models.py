@@ -158,7 +158,7 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.feature_id} | {self.title} - {self.owner}, due {self.due.strftime("%m/%d")}'
+        return f'{self.feature_id:<13} | {self.title}, due {self.due.strftime("%m/%d")}'
 
 class StatusUpdate(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
@@ -195,9 +195,14 @@ class BacklogQuery(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     query_time = models.DateTimeField(auto_now_add=True)
     query_result = JSONField()
+    subfeatures = models.CharField(max_length=9, blank=True)
     display_fields = JSONField()
     start_earliest = models.CharField(max_length=4, blank=True)
     end_latest = models.CharField(max_length=4, blank=True)
+    rfc_ratio  = models.IntegerField(blank=True)
+    committed_ratio = models.IntegerField(blank=True)
+    total_spent = models.DecimalField(max_digits=9, decimal_places=2)
+    total_remaining = models.DecimalField(max_digits=9, decimal_places=2)
     changes = models.TextField(blank=True)
 
     class Meta:

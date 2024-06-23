@@ -9,6 +9,10 @@
     </style>
 {% endblock %}
 
+{% block nav_link %} 
+|&nbsp;<a style="text-align: right;" href="{% url 'fotd:detail' fid %}">{{fid}}</a>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div style="display: flex; align-items: center;"><h2>{{fid}}</h2><a href="{% url 'fotd:fot_add' fid %}"><span class="edit-icon">&#X270E;</span></a></div>

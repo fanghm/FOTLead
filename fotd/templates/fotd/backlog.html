@@ -13,7 +13,7 @@
     .new_added {
       font-weight: bold;
     }
-    .delayed, .not_fitting {
+    .delayed, .not_fitting, .not_committed {
       background-color: red;
     }
     .duesoon {
@@ -23,8 +23,16 @@
       text-align: center;
     }
     #boundaryTable th, #boundaryTable td {
-        border: 1px solid black;
-        padding: 5px;
+      text-align: center;
+      border: 1px solid black;
+      padding: 5px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+    }
+    label, .form-control {
+      margin-right: 10px;
     }
   </style>
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
@@ -49,6 +57,20 @@
 </div>
 
 <div class="container-fluid">
+  <div class="row">
+      <label for="subfeature">Filter by Subfeature:</label>
+      <select class="form-control" name="subfeature">
+        <option value="all" selected>All</option>
+        {% for subfeature in subfeatures %}
+          <option value="{{ subfeature }}" {% if feature.risk == subfeature %}selected{% endif %}>-{{ subfeature }}</option>
+        {% endfor %}
+      </select>
+  </div>
+
+  {% if rfc_ratio %}
+  <div>RfC Ratio: {{rfc_ratio}}%</div>
+  {% endif %}
+  
   <table class="table table-striped">
     <thead>
       <tr>
@@ -56,7 +78,7 @@
           <th>{{ field_name|replace:"_, " }}</th>
         {% endfor %}
 
-        {% for fb in sprints %}
+        {% for fb in display_sprints %}
           <th> {{ fb }} </th>
         {% endfor %}
       </tr>
@@ -71,12 +93,12 @@
             {% elif field_name == "Key" %}
               <td class="no-wrap">
                 <a href="{{link_prefix}}{{field_value}}" target="_blank" title="{{item.Summary}}">{{ field_value }}</a>
-                {% if field_value in new_added_keys %}<img src="{% static 'pix/new.png' %}" alt="New added" width="32" height="32">{% endif %}
+                {% if field_value in new_added_keys %}<img src="{% static 'pix/new.png' %}" alt="New" width="32" height="16" title="New added item">{% endif %}
               </td>
 
             {% elif field_name == "Progress" %}
               <td class="no-wrap">
-                <div class="progress">
+                <div class="progress" {% if item.Risk_Status == 'Yellow' or item.Risk_Status == 'Red' %}style="background-color: {{item.Risk_Status|lower}};" title="Risk detail: {{ item.Risk_Details }}" {% endif %}>
                   <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" 
                     style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
@@ -88,9 +110,14 @@
                     <span style="font-size: x-small;">({% if endfb_changed_items.key.0 %} {{ endfb_changed_items.key.0 }} {% else %} None {% endif %})</span>
               </td>
             {% elif field_name == "End_FB" and field_value == current_fb %}
-              <td class="no-wrap duesoon">{{ field_value }}</td>
+              {% if item.FB_Committed_Status == "Not Committed" %}
+                <td class="no-wrap not_committed" title="Not committed w/ reason: ">{{ item.Stretch_Goal_Reason }}</td>
+              {% else %}
+                <td class="no-wrap duesoon" title="Due at current FB">{{ field_value }}</td>
+              {% endif %}
+
             {% elif field_name == "End_FB" and not_fitting_items and item.Key in not_fitting_items %}
-              <td class="no-wrap not_fitting" title="Program Boundary: {{ not_fitting_items|keyvalue:item.Key }}">{{ field_value }}</td>
+              <td class="no-wrap not_fitting" title="Not fitting to Program boundary {{ not_fitting_items|keyvalue:item.Key }}">{{ field_value }}</td>
 
             {% elif field_name == "RC_Status" %}
               <td class="no-wrap" style="font-size: 0.7em;">{% if field_value %}{{ field_value }}{% endif %}</td>
@@ -110,7 +137,7 @@
             {% endif %}
           {% endfor %}
 
-          {% for fb in sprints %}
+          {% for fb in display_sprints %}
             {% if fb >= item.Start_FB and fb <= item.End_FB %}
               {% if not_fitting_items and item.Key in not_fitting_items and fb > not_fitting_items|keyvalue:item.Key %}
                 <td style="background-color: red;"></td>
@@ -126,7 +153,7 @@
     </tbody>
   </table>
   {% if boundary %}
-  Applicable Program Boundary:
+  <br><h5>Applicable Program Boundary:</h5>
   <table id="boundaryTable">
     <thead>
       <tr>

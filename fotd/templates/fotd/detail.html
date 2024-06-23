@@ -46,7 +46,7 @@
           {% csrf_token %}
           <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
           <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
-          <button type="submit" class="btn btn-primary">Add</button>
+          <button type="submit" style="background-color: #007bff;">Add</button>
           <button type="button" class="cancelUpdateBtn">Cancel</button>
         </form>
 
@@ -83,9 +83,9 @@
           <input type="date" name="due" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;">
 
           <input type="text" name="contact" placeholder="related contacts" style="display: inline-block;">
-          <input type="text" name="mail" placeholder="related mail title" style="display: inline-block;">
+          <!--input type="text" name="mail" placeholder="related mail title" style="display: inline-block;">
           <input type="text" name="chat" placeholder="related teams chat" style="display: inline-block;">
-          <input type="text" name="meeting" placeholder="related meeting" style="display: inline-block;">
+          <input type="text" name="meeting" placeholder="related meeting" style="display: inline-block;"-->
           <button type="submit">Add</button>
           <button type="button" class="cancelTaskBtn">Cancel</button>
         </form>

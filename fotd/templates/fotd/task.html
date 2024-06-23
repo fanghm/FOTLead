@@ -53,8 +53,15 @@
         </select>
       </div>
 
-      <button type="submit" class="btn btn-primary">Update</button>
-      <button type="button" class="btn btn-danger deleteTaskBtn">Delete</button>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="checkbox" name="top" id="top" style="transform: scale(1.5); margin-left: 5px; " {% if task.top %}checked{% endif %}>
+        <label class="form-check-label" for="top">&nbsp;Shown in homepage</label>
+      </div>
+
+      <div style="margin-top: 30px; ">
+        <button type="submit" class="btn btn-primary">Update</button>
+        <button type="button" class="btn btn-danger deleteTaskBtn">Delete</button>
+      </div>
     </form>
   {% else %}
     <p>Task not found.</p>
