@@ -13,19 +13,14 @@
     .new_added {
       font-weight: bold;
     }
-    .delayed, .not_fitting, .not_committed {
-      background-color: red;
-    }
     .duesoon {
       background-color: orange;
     }
+    .delayed, .overdue, .not_fitting, .not_committed {
+      background-color: red !important;
+    }
     .center-align {
       text-align: center;
-    }
-    #boundaryTable th, #boundaryTable td {
-      text-align: center;
-      border: 1px solid black;
-      padding: 5px;
     }
     .row {
       display: flex;
@@ -34,12 +29,26 @@
     label, .form-control {
       margin-right: 10px;
     }
+
+    /* override jquery UI tooltip style */
+    .ui-tooltip {
+      width: 500px;
+      background: #f6f6f6;
+      border: 2px solid #ccc;
+      padding: 3px;
+      box-shadow: 0 0 2px rgba(0,0,0,0.1);
+      font-size: 15px !important;
+    }
+    
   </style>
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
+  <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
 {% endblock %}
 
 {% block script %} 
   <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
+  <script src="{% static 'fotd/jquery-ui.min.js' %}"></script>
+
 {% endblock %}
 
 {% block nav_link %} 
@@ -51,13 +60,14 @@
 <div style="display: flex; align-items: baseline; margin-left: 10px;">
   <h2>{{fid}} Backlog</h2>
   {% if query_time %}
-  <div>&nbsp;@ {{ query_time|timesince }} ago | <a href="{{request.get_full_path}}?refresh=true">Refresh</a> |</div>
+  <div>&nbsp;@ {{ query_time|timesince }} ago |</div>
   {% endif %}
-  &nbsp;<a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open JIRA Structure</a>
+  &nbsp;<a href="{{request.get_full_path}}?refresh=true">Refresh</a>&nbsp;|&nbsp;
+  <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open JIRA Structure</a>
 </div>
 
 <div class="container-fluid">
-  <div class="row">
+  <!--div class="row">
       <label for="subfeature">Filter by Subfeature:</label>
       <select class="form-control" name="subfeature">
         <option value="all" selected>All</option>
@@ -65,13 +75,9 @@
           <option value="{{ subfeature }}" {% if feature.risk == subfeature %}selected{% endif %}>-{{ subfeature }}</option>
         {% endfor %}
       </select>
-  </div>
-
-  {% if rfc_ratio %}
-  <div>RfC Ratio: {{rfc_ratio}}%</div>
-  {% endif %}
+  </div-->
   
-  <table class="table table-striped">
+  <table class="table stripe hover"><!--table-striped stripe -->
     <thead>
       <tr>
         {% for field_name in display_fields %}
@@ -98,29 +104,41 @@
 
             {% elif field_name == "Progress" %}
               <td class="no-wrap">
-                <div class="progress" {% if item.Risk_Status == 'Yellow' or item.Risk_Status == 'Red' %}style="background-color: {{item.Risk_Status|lower}};" title="Risk detail: {{ item.Risk_Details }}" {% endif %}>
+                <div class="progress" {% if item.Risk_Status == 'Yellow' or item.Risk_Status == 'Red' %}style="background-color: {{item.Risk_Status|lower}};" 
+                    title="Risk detail: {% if item.Risk_Details %} {{ item.Risk_Details }} {% else %} Not set {% endif %}" {% endif %}>
                   <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" 
                     style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
               </td>
 
-            {% elif field_name == "End_FB" and item.Key in endfb_changed_items %}
-              <td class="no-wrap">
-                  {% if field_value %} {{ field_value }} {% else %} None {% endif %}
-                    <span style="font-size: x-small;">({% if endfb_changed_items.key.0 %} {{ endfb_changed_items.key.0 }} {% else %} None {% endif %})</span>
-              </td>
-            {% elif field_name == "End_FB" and field_value == current_fb %}
-              {% if item.FB_Committed_Status == "Not Committed" %}
-                <td class="no-wrap not_committed" title="Not committed w/ reason: ">{{ item.Stretch_Goal_Reason }}</td>
+            {% elif field_name == "End_FB" %}
+              {% if field_value %} 
+              <td class="no-wrap {{item.tags}}" data-tooltip="{{ item.hints|safe }}">
+                {{ field_value }} 
               {% else %}
-                <td class="no-wrap duesoon" title="Due at current FB">{{ field_value }}</td>
+              <td class="no-wrap" style="font-size: 0.7em;">(Not Set)
+                <select data-itemKey="{{ item.Key }}" style="width: 110px;">
+                  <option value="">Options...</option>
+                  <option value="requestPlanning" data-email="xyz@nsb.com" >Send Planning Request</option>
+                  <option value="addTask" data-email="xyz@nsb.com" >Add a task to track </option>
+                </select>
               {% endif %}
-
-            {% elif field_name == "End_FB" and not_fitting_items and item.Key in not_fitting_items %}
-              <td class="no-wrap not_fitting" title="Not fitting to Program boundary {{ not_fitting_items|keyvalue:item.Key }}">{{ field_value }}</td>
-
+              {# if item.Key in endfb_changed_items %} <span style="font-size: x-small;">({{ endfb_changed_items|get_previous_end_fb:item.Key }})</span> {% endif #}
+              </td>
+            
             {% elif field_name == "RC_Status" %}
-              <td class="no-wrap" style="font-size: 0.7em;">{% if field_value %}{{ field_value }}{% endif %}</td>
+              <td class="no-wrap" style="font-size: 0.7em;">
+              {% if field_value %}
+                {{ field_value }}
+              {% else %}
+                (Not Set)
+                <select data-itemKey="{{ item.Key }}" style="width: 110px;">
+                  <option value="">Options...</option>
+                  <option value="requestRfC" data-email="xyz@nsb.com" >Send RfC Request</option>
+                  <option value="addTask" data-email="xyz@nsb.com" >Add a task to track </option>
+                </select>
+              {% endif %}
+              </td>
 
             {% elif field_name == "RC_FB" %}
               {% if field_value and item.End_FB %}
@@ -131,6 +149,21 @@
 
             {% elif field_name == "Original_Estimate" or field_name == "Time_Remaining" %}
               <td class="no-wrap">{% if field_value %}{{ field_value|rjust:"6" }}{% endif %}</td>
+
+            {% elif field_name == "Assignee" %}
+              <td class="no-wrap">
+                {% if not field_value %}
+                  <span style="background-color: orange;">(Not Assigned)</span>
+                  <select data-itemKey="{{ item.Key }}" style="width: 110px;">
+                    <option value="">Options...</option>
+                    <option value="assignAPO" data-email="xxx@nsb.com" >Assign to L-APO: James Bond</option>
+                    <option value="sendMail" data-email="I_MN_RAN_L2_LAPO_GMS">Mail to: I_MN_RAN_L2_LAPO_GMS</option>
+                    <option value="openCampPage" data-url="http://camp.example.com">Open the CAMP page...</option>
+                  </select>
+                {% else %}
+                  {{ field_value }}
+                {% endif %}
+              </td>
 
             {% else %}
               <td class="no-wrap">{% if field_value %}{{ field_value }}{% endif %}</td>
@@ -152,9 +185,10 @@
       {% endfor %}
     </tbody>
   </table>
+
   {% if boundary %}
   <br><h5>Applicable Program Boundary:</h5>
-  <table id="boundaryTable">
+  <table id="boundaryTable" class="table-bordered center-align">
     <thead>
       <tr>
         <th>Release</th>
@@ -196,6 +230,7 @@
 </div>
 
 <script>
+  
 $(document).ready(function() {
   // Get the number of columns
   var numColumns = $('.table thead th').length;
@@ -203,13 +238,32 @@ $(document).ready(function() {
   // Generate an array of column indexes from 10 to the last column
   var nonSortableColumns = Array.from({length: numColumns - 9}, (_, i) => i + 9);
 
-  $('.table').DataTable({
+  // add <tfoot> tag with same number of <th></th> as the table columns
+  var tfoot = '<tfoot>';
+  for (var i=0; i<numColumns; i++)
+    tfoot += '<th></th>';
+  tfoot += '</tfoot>';
+  $(".table").append(tfoot);
+
+  var table = $('.table').DataTable({
+    //"stateSave": true,
+    "scrollX": true,
+    "sScrollXInner": "100%",  // if scrollX is true without this line, table body and header might not align
     "pageLength": 20,
     "lengthChange": false, // dont show "Show xx entries" by default
     "pagingType": "simple", // use simple pagination
+
     "columnDefs": [
       { "orderable": false, "targets": nonSortableColumns },
-      { "className": "center-align", "targets": [4,5,6,7] } // zero-based col index
+      { "className": "center-align", "targets": [4,5,6,7] }, // zero-based col index
+
+      // render multiple tooltip for the 6th column: End_FB
+      { "targets": 5,
+        "render": function(data, type, row, meta) {
+          var tooltipContent = $(meta.settings.aoData[meta.row].anCells[meta.col]).data('tooltip');
+          return `<div title="${tooltipContent}">${data}</div>`;
+        }
+      }
     ],
     "drawCallback": function(settings) {
       var api = this.api();
@@ -219,12 +273,102 @@ $(document).ready(function() {
         $('#' + api.table().node().id + '_paginate').show();
       }
       if (api.page.info().recordsTotal <= 20) {
-        $('#' + api.table().node().id + '_length').hide(); // if record number less than 20, hide "Show xx entries"
+        $('#' + api.table().node().id + '_length').hide(); // if record number less than 20, hide "Showing xx entries" dropdown
       } else {
         $('#' + api.table().node().id + '_length').show();
       }
+    },
+
+    // footer
+    "footerCallback": function (row, data, start, end, display) {
+      let api = this.api();
+      let intVal = function (i) {
+        return typeof i === 'string'
+          ? i.replace(/[\$,\s]/g, '') * 1
+          : typeof i === 'number'
+          ? i
+          : 0;
+      };
+    
+      // Total over all pages
+      total_effort = api.column(6).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+      total_remaining = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+    
+      // count the unique CA values in the 2nd column
+      let caValues = api.column(1).data().toArray();
+      let uniqueCaValues = new Set(caValues);
+      let uniqueCaCount = uniqueCaValues.size;
+
+      // Calculate the percentage of rows with "Ready for Commitment" in the 9th column
+      let totalRows = api.column(8).data().length;
+      let rfcCount = api.column(8).data().filter(text => text === "Ready for Commitment").length;
+      let rfcOrCommittedCount = api.column(8).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
+      let rfcPercentage = (rfcOrCommittedCount / totalRows * 100).toFixed(0);
+      let donePercentage = ((total_effort - total_remaining) / total_effort * 100).toFixed(1);
+    
+      // Update footer
+      api.column(1).footer().innerHTML = `${uniqueCaCount} Areas`;
+      api.column(3).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
+      api.column(6).footer().innerHTML = `${total_effort} Hours`;
+      api.column(7).footer().innerHTML = `${total_remaining} Hours`;
+      api.column(8).footer().innerHTML = `${rfcPercentage}% ` + (rfcCount > 0 ? 'RfC' : 'Committed');
+      api.column(9).footer().innerHTML = `${donePercentage}% Done`;
+    }
+
+  });
+
+  $("div[title]").tooltip({
+      track: true,  // optional
+      content: function() {
+        return $(this).attr('title');
+      }
+  });
+
+  // Use event delegation to catch the click event on the dynamically added button
+  $('body').on('click', '#copyToClipboard', function() {
+    var columnData = table.column(3).data();
+  
+    var filteredData = columnData.filter(function(value) {
+      return !value.includes("Not Assigned");
+    });
+
+    var joinedData = filteredData.unique().join(';');
+
+    navigator.clipboard.writeText(joinedData).then(function() {
+      alert('All names copied to your clipboard!');
+    }, function(err) {
+      console.error('Could not copy text: ', err);
+    });
+  });
+    
+  $('select').change(function() {
+    var selectedOption = $(this).find('option:selected');
+    var selectedValue = $(this).val();
+    var itemKey = $(this).data('itemKey');
+    var email = selectedOption.data('email'); // data-email
+
+    switch (selectedValue) {
+      case 'assignAPO':
+        console.log('Update APO directly in JIRA', itemKey);
+        //refresh the page after that
+        //break;
+      case 'sendMail':
+        console.log('Send a mail to L-APO for ', itemKey);
+        //break;
+        
+      default:
+        console.log('Not implented yet.');
+        alert("Not implented yet.");
     }
   });
+
+});
+
+$('#boundaryTable').DataTable({
+  "paging": false,
+  "ordering": false,
+  "searching": false,
+  "info": false
 });
 </script>
 {% endblock %}

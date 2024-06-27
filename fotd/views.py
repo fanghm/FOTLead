@@ -220,6 +220,18 @@ def _get_fbs(start_fb, end_fb):
             fbs.append(str(start))
         return fbs
 
+def _add_tag(item, tag):
+    if 'tags' not in item:
+        item['tags'] = tag
+    else:
+        item['tags'] += " " + tag
+
+def _add_hint(item, hint):
+    if 'hints' not in item:
+        item['hints'] = hint
+    else:
+        item['hints'] += "<br/>" + hint
+
 # rules:
 # Activity type - Entity Specification: sw_done
 # Activity type - SW: sw_done
@@ -230,23 +242,55 @@ def _get_fbs(start_fb, end_fb):
 def check_plan_fitting(result, boundary):
     not_fitting_items = {}
     for item in result:
+        not_fitting = False
+
         if item['Activity_Type'] in ('SW', 'Entity Specification') and item['End_FB'] > boundary.sw_done:
             not_fitting_items[item['Key']] = boundary.sw_done
+            not_fitting = True
         elif item['Activity_Type'] == 'CuDo' and item['End_FB'] > boundary.cudo:
             not_fitting_items[item['Key']] = boundary.cudo
+            not_fitting = True
         elif item['Activity_Type'] == 'System Testing':
             if item['Competence_Area'] in ('VAL_PET', 'VAL_FIVE'):
-                if(item['End_FB'] > boundary.pet_five_done):
+                if item['End_FB'] > boundary.pet_five_done:
                     not_fitting_items[item['Key']] = boundary.pet_five_done
+                    not_fitting = True
             else:
-                if(item['End_FB'] > boundary.st_done):
+                if item['End_FB'] > boundary.st_done:
                     not_fitting_items[item['Key']] = boundary.st_done
-        else:
-            #done nothing for other activity types
-            pass
+                    not_fitting = True
+
+        if not_fitting:
+            _add_tag(item, 'not_fitting')
+            _add_hint(item, "Not fitting to Program boundary: " + str(not_fitting_items[item['Key']]))
 
     print(f"not_fitting_items: {not_fitting_items}")
     return not_fitting_items
+
+def check_exec_issue(result, current_fb):
+    for item in result:
+        if not item['End_FB']:
+            continue
+
+        if item['End_FB'] == current_fb:
+            if item['RC_Status'] == 'Not Committed':
+                _add_tag(item, "not_committed")
+                _add_hint(item, "Not_committed, stretch goal reason: " + (item['Stretch_Goal_Reason'] if 'Stretch_Goal_Reason' in item else "Not set"))
+            else:
+                _add_tag(item, "duesoon")
+                _add_hint(item, "Due at current FB")
+
+        elif item['End_FB'] < current_fb:
+            _add_tag(item, "overdue")
+            _add_hint(item, f"Item not done at {item['End_FB']} and End FB not updated!")
+        else:
+            pass
+
+        if item['RC_FB'] and item['End_FB'] > item['RC_FB']:
+            _add_tag(item, "delayed")
+            _add_hint(item, "Delayed! Committed to deliver at " + item['RC_FB'])
+
+    return
 
 def backlog(request, fid):
     first_query = False
@@ -279,17 +323,19 @@ def backlog(request, fid):
             if len(query.query_result) != len(result):
                 # find out new added items
                 new_added_keys = [item['Key'] for item in result if not any(item['Key'] == old_item['Key'] for old_item in query.query_result)]
-                print(f"New added keys: {new_added_keys}")
-                changes += f"New added: {new_added_keys}; "
+                if new_added_keys:
+                    print(f"New added keys: {new_added_keys}")
+                    changes += f"New added: {new_added_keys}; "
 
             # find out End_FB changed items
-            endfb_changed_items = {item['Key']: (old_item['End_FB'], item['End_FB']) 
+            endfb_changed_items = {item['Key']: {'previous': old_item['End_FB'], 'current': item['End_FB']}
                                    for old_item in query.query_result 
                                    for item in result 
                                    if item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB']}
             endfb_changed_str = ";".join([f"{key}: {old_endfb}->{new_endfb}" for key, (old_endfb, new_endfb) in endfb_changed_items.items()])
-            print(f"End_FB changes: {endfb_changed_str}")
-            changes += f"EndFB changes: {endfb_changed_str}"
+            if endfb_changed_items:
+                print(f"End_FB changes: {endfb_changed_str}")
+                changes += f"EndFB changes: {endfb_changed_str}"
 
         mandatory_fields = {
             'feature_id': fid,
@@ -325,12 +371,11 @@ def backlog(request, fid):
 
     context = {
         'fid': fid,
-        'result': result,
         'subfeatures': subfeatures,
         'display_fields': display_fields,
         'display_sprints': display_sprints,
-        'rfc_ratio': rfc_ratio,
-        'committed_ratio': committed_ratio,
+        #'rfc_ratio': rfc_ratio,
+        #'committed_ratio': committed_ratio,
         'new_added_keys': new_added_keys,
         'endfb_changed_items': endfb_changed_items,
         'current_fb': current_fb,
@@ -340,12 +385,18 @@ def backlog(request, fid):
     if not jira_query:
         context['query_time'] = query.query_time
 
+    check_exec_issue(result, current_fb)
+
     boundary = Feature.objects.get(id=fid).boundary
     if boundary:
         context['boundary'] = boundary
         not_fitting_items = check_plan_fitting(result, boundary)
         if not_fitting_items:
             context['not_fitting_items'] = not_fitting_items
+
+    context.update({
+        'result': result,
+    })
 
     return render(request, 'fotd/backlog.html', context)
 

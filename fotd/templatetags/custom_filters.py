@@ -17,3 +17,7 @@ def startswith(text, starts):
 @register.filter
 def keyvalue(dict, key):
     return dict.get(key, '')
+
+@register.filter
+def get_previous_end_fb(endfb_changed_items, key):
+    return endfb_changed_items.get(key, {}).get('previous', 'blank') if endfb_changed_items else 'blank'

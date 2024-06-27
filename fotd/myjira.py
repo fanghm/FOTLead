@@ -12,7 +12,7 @@ def _queryJira(jql_str, field_dict):
     total_spent = total_remaining = 0
     total_count = json_result['total']
     print(f"Total count: {total_count}")
-    
+
     for issue in json_result['issues']:
         issue_dict = {'Key': issue['key']}
         for field_name, custom_name in field_dict.items():
@@ -61,21 +61,19 @@ def _queryJira(jql_str, field_dict):
         if end_latest is None or (issue_dict['End_FB'] and issue_dict['End_FB'] > end_latest):
             end_latest = issue_dict['End_FB']
 
-        if issue_dict['RC_FB'].startswith('Committed'):
-            committed_count += 1
-            rfc_count += 1
-        elif issue_dict['RC_FB'].startswith('Ready'):
-            rfc_count += 1
-        else:
-            pass
+        if issue_dict['RC_Status']:
+            if issue_dict['RC_Status'].startswith('Committed'):
+                committed_count += 1
+            if issue_dict['RC_Status'].startswith(('Committed', 'Ready')):
+                rfc_count += 1
 
     if total_count > 0:
         rfc_ratio = int(rfc_count * 100 / total_count)
         committed_ratio = int(committed_count * 100 / total_count)
 
-    keys_to_hide = ['Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort']
-    if committed_count < total_count:   # not all committed
-        keys_to_hide.append('RC_FB')
+    keys_to_hide = ['Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
+    #if committed_count < total_count:   # not all committed
+    #    keys_to_hide.append('RC_FB')
     
     fields_to_display = [k for k in result[0].keys() if k not in keys_to_hide] if result else []
 
@@ -90,10 +88,10 @@ def queryJiraCaItems(fid):
         'Assignee': 'assignee',
         'Start_FB': 'customfield_38694',
         'End_FB': 'customfield_38693',
-        'RC_FB': 'customfield_43490',
-        'RC_Status': 'customfield_38728',
         'Original_Estimate': 'customfield_43292',
         'Time_Remaining': 'customfield_43291',
+        'RC_FB': 'customfield_43490',
+        'RC_Status': 'customfield_38728',
         'FB_Committed_Status': 'customfield_38758', #value
         'Stretch_Goal_Reason': 'customfield_43893', #value
         'Risk_Status': 'customfield_38754',     #value
