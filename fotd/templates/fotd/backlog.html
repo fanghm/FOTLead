@@ -77,7 +77,7 @@
       </select>
   </div-->
   
-  <table class="table stripe hover"><!--table-striped stripe -->
+  <table id='backlog-table' class="table stripe hover"><!--table-striped stripe -->
     <thead>
       <tr>
         {% for field_name in display_fields %}
@@ -97,9 +97,9 @@
               {# dont show #}
 
             {% elif field_name == "Key" %}
-              <td class="no-wrap">
+              <td class="no-wrap keyCell">
                 <a href="{{link_prefix}}{{field_value}}" target="_blank" title="{{item.Summary}}">{{ field_value }}</a>
-                {% if field_value in new_added_keys %}<img src="{% static 'pix/new.png' %}" alt="New" width="32" height="16" title="New added item">{% endif %}
+                {% if field_value in new_added_keys %}<img src="{% static 'pix/new.png' %}" alt="New" width="48" height="24" title="New added item">{% endif %}
               </td>
 
             {% elif field_name == "Progress" %}
@@ -117,7 +117,7 @@
                 {{ field_value }} 
               {% else %}
               <td class="no-wrap" style="font-size: 0.7em;">(Not Set)
-                <select data-itemKey="{{ item.Key }}" style="width: 110px;">
+                <select class="selectForEndFb" data-item_key="{{ item.Key }}" style="width: 110px;">
                   <option value="">Options...</option>
                   <option value="requestPlanning" data-email="xyz@nsb.com" >Send Planning Request</option>
                   <option value="addTask" data-email="xyz@nsb.com" >Add a task to track </option>
@@ -127,15 +127,16 @@
               </td>
             
             {% elif field_name == "RC_Status" %}
-              <td class="no-wrap" style="font-size: 0.7em;">
+              <td class="no-wrap rcStatusCell" style="font-size: 0.7em;">
               {% if field_value %}
                 {{ field_value }}
               {% else %}
                 (Not Set)
-                <select data-itemKey="{{ item.Key }}" style="width: 110px;">
+                <select class="selectForRcStatus" data-item_key="{{ item.Key }}" data-fid="{{ fid }}" style="width: 110px;">
                   <option value="">Options...</option>
-                  <option value="requestRfC" data-email="xyz@nsb.com" >Send RfC Request</option>
-                  <option value="addTask" data-email="xyz@nsb.com" >Add a task to track </option>
+                  <option value="requestRfC" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}" >Send RfC Request for this item</option>
+                  <option value="requestRfCAll" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}" >Send RfC Request for the APO's items</option>
+                  <option value="addTask" >Add a task to track </option>
                 </select>
               {% endif %}
               </td>
@@ -151,13 +152,13 @@
               <td class="no-wrap">{% if field_value %}{{ field_value|rjust:"6" }}{% endif %}</td>
 
             {% elif field_name == "Assignee" %}
-              <td class="no-wrap">
+              <td class="no-wrap assigneeCell">
                 {% if not field_value %}
                   <span style="background-color: orange;">(Not Assigned)</span>
-                  <select data-itemKey="{{ item.Key }}" style="width: 110px;">
+                  <select class="selectForAssignee" data-item_key="{{ item.Key }}" style="width: 110px;">
                     <option value="">Options...</option>
-                    <option value="assignAPO" data-email="xxx@nsb.com" >Assign to L-APO: James Bond</option>
-                    <option value="sendMail" data-email="I_MN_RAN_L2_LAPO_GMS">Mail to: I_MN_RAN_L2_LAPO_GMS</option>
+                    <option value="assignAPO">Assign to L-APO: James Bond</option>
+                    <option value="sendMail" data-lapo_email="I_MN_RAN_L2_LAPO_GMS">Mail to: I_MN_RAN_L2_LAPO_GMS</option>
                     <option value="openCampPage" data-url="http://camp.example.com">Open the CAMP page...</option>
                   </select>
                 {% else %}
@@ -340,20 +341,84 @@ $(document).ready(function() {
       console.error('Could not copy text: ', err);
     });
   });
-    
-  $('select').change(function() {
+  
+  function send_rfc_mail(fid, item_keys, first_name, apo_email) {
+    context = {
+      'fid': fid,
+      'item_keys': item_keys,
+      'first_name': first_name,
+      'apo_email': apo_email
+    };
+
+    $.ajax({
+      type: "POST",
+      url: "/ajax_send_email/RfC/",
+      data: JSON.stringify(context),
+      contentType: "application/json",
+      success: function(response) {
+        console.log("RfC mail sent successfully:", response);
+        alert("RfC mail sent successfully!");
+      },
+      error: function(error) {
+        console.error("Error sending email:", error);
+        alert("Failed to send email.");
+      }
+    });
+  }
+  $('.selectForRcStatus').change(function() {
+    var fid = $(this).data('fid');
+    var selectedOption = $(this).find('option:selected');
+
+    var apo_email = selectedOption.data('apo_email');
+    var apo = selectedOption.data('apo');
+    var first_name = apo.split(' ')[0];
+
+    var selectedValue = $(this).val();
+    switch (selectedValue) {
+      case 'requestRfC':
+        var item_key = $(this).data('item_key');
+        console.log('Send a mail to Assignee/APO for RfC of ', item_key);
+        send_rfc_mail(fid, [item_key], first_name, apo_email);
+        break;
+
+    case 'requestRfCAll':
+      // iterate thru all items on the table and find out all the Keys with same Assignee and RC_Status is not set
+      var keysWithSameAssigneeAndUnsetRCStatus = [];
+      $('#backlog-table tr').each(function() {
+        var row = $(this);
+        var assignee = row.find('.assigneeCell').text();
+        var rcStatus = row.find('.rcStatusCell').text();
+        var key = row.find('.keyCell a').text();
+
+        // 检查分配者电子邮件是否匹配且 RC_Status 未设置
+        if (assignee.includes(apo) && rcStatus.includes('(Not Set)')) {
+          keysWithSameAssigneeAndUnsetRCStatus.push(key);
+        }
+      });
+
+      send_rfc_mail(fid, keysWithSameAssigneeAndUnsetRCStatus, first_name, apo_email);
+      //console.log(keysWithSameAssigneeAndUnsetRCStatus);
+      //alert("found keys: " + keysWithSameAssigneeAndUnsetRCStatus.length);
+      break;
+        
+    default:
+      console.log('Not implented yet.');
+      alert("Not implented yet.");
+    }
+  });
+  $('.selectForAssignee').change(function() {
     var selectedOption = $(this).find('option:selected');
     var selectedValue = $(this).val();
-    var itemKey = $(this).data('itemKey');
-    var email = selectedOption.data('email'); // data-email
+    var item_key = $(this).data('item_key');
+    var lapo_email = selectedOption.data('lapo_email');
 
     switch (selectedValue) {
       case 'assignAPO':
-        console.log('Update APO directly in JIRA', itemKey);
+        console.log('Update APO directly in JIRA', item_key);
         //refresh the page after that
         //break;
       case 'sendMail':
-        console.log('Send a mail to L-APO for ', itemKey);
+        console.log('Send a mail to L-APO for ', item_key);
         //break;
         
       default:
@@ -361,7 +426,6 @@ $(document).ready(function() {
         alert("Not implented yet.");
     }
   });
-
 });
 
 $('#boundaryTable').DataTable({

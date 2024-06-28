@@ -1,0 +1,28 @@
+<!-- templates/mail/RfC.html -->
+<!-- Subject: "[Action Required] RfC request for {{fid}}" -->
+<html>
+<body>
+    <p>Hi {{ first_name }},</p>
+    <p></p>
+    <p>Could you pls review your plan of the following backlog item(s) for <b>{{ fid }}</b> and set as "Ready for Commitment"?</p>
+    <ul>
+        {% for item_key in item_keys %}
+        <li><a href="https://jiradc.ext.net.nokia.com/browse/{{ item_key }}">{{ item_key }}</a></li>
+        {% endfor %}
+    </ul>
+    <p></p>
+    <p>If any question or anything blocks you to do this, feel free to let me know, thanks!</p>
+    <p></p>
+    <p>Best regards,
+    <br>{{ fot_lead|capfirst }}</p>
+    <hr>
+    <p>This mail is sent from FOTD, a collaboration tool developed for FOT Leaders.</p>
+</body>
+</html>
+<!--
+No problem, all set!
+Ok, I'm checking this now, will do it soon!
+Hm, I'm not sure about this, let me check with the team and get back to you. LE: {{date}}
+---
+Thank you for giving me a feedback via this tool! I will check and get back to you when necessary.
+-->

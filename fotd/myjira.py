@@ -24,6 +24,7 @@ def _queryJira(jql_str, field_dict):
                 issue_dict[field_name] = value['value']
             elif field_name in ('Assignee'):
                 issue_dict[field_name] = value['displayName']
+                issue_dict['Assignee_Email'] = value['emailAddress']
             else:
                 issue_dict[field_name] = value
 
@@ -71,7 +72,7 @@ def _queryJira(jql_str, field_dict):
         rfc_ratio = int(rfc_count * 100 / total_count)
         committed_ratio = int(committed_count * 100 / total_count)
 
-    keys_to_hide = ['Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
+    keys_to_hide = ['Assignee_Email', 'Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
     #if committed_count < total_count:   # not all committed
     #    keys_to_hide.append('RC_FB')
     

@@ -12,6 +12,7 @@ urlpatterns = [
     path('ajax_feature_update/<fid>/', views.ajax_feature_update, name='ajax_feature_update'),
     path('ajax_feature_status/<fid>/', views.ajax_feature_status, name='ajax_feature_status'),
 
+    path('ajax_send_email/<str:email_type>/', views.ajax_send_email, name='ajax_send_email'),
 
     path('ajax_add_feature_roles/<fid>/', views.ajax_add_feature_roles, name='ajax_add_feature_roles'),
     path('ajax_add_fot_members/<fid>/', views.ajax_add_fot_members, name='ajax_add_fot_members'),

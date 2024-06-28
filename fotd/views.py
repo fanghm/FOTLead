@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
 from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery, ProgramBoundary
 from .myjira import queryJiraCaItems
+from .mailer import send_rfc_email
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
@@ -487,3 +488,21 @@ def ajax_program_boundary(request):
         return JsonResponse({'status': 'success'})
 
     return JsonResponse({'status': 'error'})
+
+@csrf_exempt
+def ajax_send_email(request, email_type):
+    if email_type == 'RfC':        
+        context = json.loads(request.body)
+        context.update({
+            'fot_lead': request.user.username,
+        })
+        #print(f"email_type: {email_type}, context: {context}")
+
+        send_rfc_email(context)
+        pass
+    elif email_type == 'sometype':
+        pass
+    else:
+        pass
+
+    return JsonResponse({'status': 'success', 'email_type': email_type})
