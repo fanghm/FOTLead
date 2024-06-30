@@ -1,10 +1,10 @@
 <!-- templates/mail/RfC.html -->
-<!-- Subject: "[Action Required] RfC request for {{fid}}" -->
+<!-- Subject: "[Action Required] RfC request the {{area}} plan in {{fid}} " -->
 <html>
 <body>
     <p>Hi {{ first_name }},</p>
     <p></p>
-    <p>Could you pls review your plan of the following backlog item(s) for <b>{{ fid }}</b> and set as "Ready for Commitment"?</p>
+    <p>Could you pls review your plan of the following {{area}} backlog item(s) for <b>{{ fid }}</b> and set as "Ready for Commitment"?</p>
     <ul>
         {% for item_key in item_keys %}
         <li><a href="https://jiradc.ext.net.nokia.com/browse/{{ item_key }}">{{ item_key }}</a></li>
@@ -16,7 +16,7 @@
     <p>Best regards,
     <br>{{ fot_lead|capfirst }}</p>
     <hr>
-    <p>This mail is sent from FOTD, a collaboration tool developed for FOT Leaders.</p>
+    <p>This mail is sent from FOTD - a collaboration tool developed for FOT.</p>
 </body>
 </html>
 <!--

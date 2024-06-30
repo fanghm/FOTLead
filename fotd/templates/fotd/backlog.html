@@ -113,15 +113,17 @@
 
             {% elif field_name == "End_FB" %}
               {% if field_value %} 
-              <td class="no-wrap {{item.tags}}" data-tooltip="{{ item.hints|safe }}">
-                {{ field_value }} 
+              <td class="no-wrap {{item.tags}}" {% if item.hints %} data-tooltip="{{ item.hints|safe }}" {% endif %}>
+                {{ field_value }}
               {% else %}
               <td class="no-wrap" style="font-size: 0.7em;">(Not Set)
-                <select class="selectForEndFb" data-item_key="{{ item.Key }}" style="width: 110px;">
-                  <option value="">Options...</option>
-                  <option value="requestPlanning" data-email="xyz@nsb.com" >Send Planning Request</option>
-                  <option value="addTask" data-email="xyz@nsb.com" >Add a task to track </option>
+                {% if item.Assignee %}
+                <select class="selectForEndFb" data-item_key="{{ item.Key }}" data-fid="{{ fid }}" data-area="{{item.Competence_Area}}" style="width: 110px;">
+                  <option value="">Action...</option>
+                  <option value="requestPlanning" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}">Send planning request</option>
+                  <option value="addTask">Add a task to track </option>
                 </select>
+                {% endif %}
               {% endif %}
               {# if item.Key in endfb_changed_items %} <span style="font-size: x-small;">({{ endfb_changed_items|get_previous_end_fb:item.Key }})</span> {% endif #}
               </td>
@@ -132,12 +134,14 @@
                 {{ field_value }}
               {% else %}
                 (Not Set)
-                <select class="selectForRcStatus" data-item_key="{{ item.Key }}" data-fid="{{ fid }}" style="width: 110px;">
-                  <option value="">Options...</option>
-                  <option value="requestRfC" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}" >Send RfC Request for this item</option>
-                  <option value="requestRfCAll" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}" >Send RfC Request for the APO's items</option>
+                {% if item.Assignee and item.End_FB %}
+                <select class="selectForRcStatus" data-item_key="{{ item.Key }}" data-fid="{{ fid }}"  data-area="{{item.Competence_Area}}" style="width: 110px;">
+                  <option value="">Action...</option>
+                  <option value="requestRfC" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}" >Send RfC request for this item</option>
+                  <option value="requestRfCAll" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}" >Send RfC request for the APO's items</option>
                   <option value="addTask" >Add a task to track </option>
                 </select>
+                {% endif %}
               {% endif %}
               </td>
 
@@ -262,7 +266,7 @@ $(document).ready(function() {
       { "targets": 5,
         "render": function(data, type, row, meta) {
           var tooltipContent = $(meta.settings.aoData[meta.row].anCells[meta.col]).data('tooltip');
-          return `<div title="${tooltipContent}">${data}</div>`;
+          return tooltipContent ? `<div title="${tooltipContent}">${data}</div>` : `<div>${data}</div>`;
         }
       }
     ],
@@ -342,9 +346,12 @@ $(document).ready(function() {
     });
   });
   
-  function send_rfc_mail(fid, item_keys, first_name, apo_email) {
+  const REQ_TYPE_PLANNING = "Planning";
+  const REQ_TYPE_RFC = "RfC";
+  function _send_mail_req(req_type, fid, area, item_keys, first_name, apo_email) {
     context = {
       'fid': fid,
+      'area': area,
       'item_keys': item_keys,
       'first_name': first_name,
       'apo_email': apo_email
@@ -352,12 +359,12 @@ $(document).ready(function() {
 
     $.ajax({
       type: "POST",
-      url: "/ajax_send_email/RfC/",
+      url: "/ajax_send_email/" + req_type + "/",
       data: JSON.stringify(context),
       contentType: "application/json",
       success: function(response) {
-        console.log("RfC mail sent successfully:", response);
-        alert("RfC mail sent successfully!");
+        console.log("Mail sent successfully:", response);
+        alert(req_type + " mail sent successfully!");
       },
       error: function(error) {
         console.error("Error sending email:", error);
@@ -365,8 +372,32 @@ $(document).ready(function() {
       }
     });
   }
+
+  $('.selectForEndFb').change(function() {
+    var fid = $(this).data('fid');
+    var area = $(this).data('area');
+    var selectedOption = $(this).find('option:selected');
+
+    var apo_email = selectedOption.data('apo_email');
+    var apo = selectedOption.data('apo');
+    var first_name = apo.split(' ')[0];
+
+    var selectedValue = $(this).val();
+    switch (selectedValue) {
+      case 'requestPlanning':
+        var item_key = $(this).data('item_key');
+        console.log('Send a mail to Assignee/APO for planning of ', item_key);
+        _send_mail_req(REQ_TYPE_PLANNING, fid, area, [item_key], first_name, apo_email);
+        break;
+        
+    default:
+      alert("Pls select an option.");
+    }
+  });
+
   $('.selectForRcStatus').change(function() {
     var fid = $(this).data('fid');
+    var area = $(this).data('area');
     var selectedOption = $(this).find('option:selected');
 
     var apo_email = selectedOption.data('apo_email');
@@ -378,7 +409,7 @@ $(document).ready(function() {
       case 'requestRfC':
         var item_key = $(this).data('item_key');
         console.log('Send a mail to Assignee/APO for RfC of ', item_key);
-        send_rfc_mail(fid, [item_key], first_name, apo_email);
+        _send_mail_req(REQ_TYPE_RFC, fid, area, [item_key], first_name, apo_email);
         break;
 
     case 'requestRfCAll':
@@ -396,16 +427,16 @@ $(document).ready(function() {
         }
       });
 
-      send_rfc_mail(fid, keysWithSameAssigneeAndUnsetRCStatus, first_name, apo_email);
+      _send_mail_req(REQ_TYPE_RFC, fid, area, keysWithSameAssigneeAndUnsetRCStatus, first_name, apo_email);
       //console.log(keysWithSameAssigneeAndUnsetRCStatus);
       //alert("found keys: " + keysWithSameAssigneeAndUnsetRCStatus.length);
       break;
         
     default:
-      console.log('Not implented yet.');
-      alert("Not implented yet.");
+      alert("Pls select an option.");
     }
   });
+
   $('.selectForAssignee').change(function() {
     var selectedOption = $(this).find('option:selected');
     var selectedValue = $(this).val();

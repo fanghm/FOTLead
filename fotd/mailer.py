@@ -73,24 +73,24 @@ class Mailer(object):
 
     def __del__(self):
         self._smtp.quit()
+
+def _get_mail_content(email_type, context):
+    template_content = render_to_string(f'mail/{email_type}.html', context)
+    subject_match = re.search('<!-- Subject: "(.*?)" -->', template_content)
+    if subject_match:
+        subject = subject_match.group(1)
+    else:
+        subject = f'[Action Required] {email_type} request for {context["fid"]}'
+
+    html_content = re.sub('<!--.*?-->', '', template_content, flags=re.DOTALL).strip()
+    text_content = strip_tags(html_content)  # for compatibility with email clients that don't support HTML
+
+    return (subject, text_content, html_content)
     
-def send_email(subject, text_content, html_content):
+def send_email(email_type, context):
     mailer = Mailer("Frank Fang<frank.fang@nokia-sbell.com>")   #TODO: replace as login user
     toAddress = ["frank.fang@nokia-sbell.com"]  #TODO: replace as context['apo_email']
     ccAddress = []  #TODO: cc APM
     mailer.addAddresses(toAddress, ccAddress)
 
-    mailer.sendMessage(subject, text_content, html_content)
-
-def send_rfc_email(context):
-    template_content = render_to_string('mail/RfC.html', context)
-    subject_match = re.search('<!-- Subject: "(.*?)" -->', template_content)
-    if subject_match:
-        subject = subject_match.group(1)
-    else:
-        subject = f'[Action Required] RfC request for {context["fid"]}'
-
-    html_content = re.sub('<!--.*?-->', '', template_content, flags=re.DOTALL).strip()
-    text_content = strip_tags(html_content)  # for compatibility with email clients that don't support HTML
-
-    send_email(subject, text_content, html_content)
+    mailer.sendMessage(*_get_mail_content(email_type, context))

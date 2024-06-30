@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
 from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery, ProgramBoundary
 from .myjira import queryJiraCaItems
-from .mailer import send_rfc_email
+from .mailer import send_email
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
@@ -333,8 +333,11 @@ def backlog(request, fid):
                                    for old_item in query.query_result 
                                    for item in result 
                                    if item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB']}
-            endfb_changed_str = ";".join([f"{key}: {old_endfb}->{new_endfb}" for key, (old_endfb, new_endfb) in endfb_changed_items.items()])
             if endfb_changed_items:
+                endfb_changed_str = ";".join([
+                    f"{key}: {value['previous']}->{value['current']}" 
+                    for key, value in endfb_changed_items.items()
+                ])
                 print(f"End_FB changes: {endfb_changed_str}")
                 changes += f"EndFB changes: {endfb_changed_str}"
 
@@ -489,18 +492,24 @@ def ajax_program_boundary(request):
 
     return JsonResponse({'status': 'error'})
 
+
+REQ_TYPE_PLANNING = "Planning"
+REQ_TYPE_RFC = "RfC"
+
 @csrf_exempt
 def ajax_send_email(request, email_type):
-    if email_type == 'RfC':        
-        context = json.loads(request.body)
-        context.update({
-            'fot_lead': request.user.username,
-        })
-        #print(f"email_type: {email_type}, context: {context}")
+    context = json.loads(request.body)
+    context.update({
+        'fot_lead': request.user.username,
+    })
+    #print(f"email_type: {email_type}, context: {context}")
 
-        send_rfc_email(context)
+    if email_type == REQ_TYPE_RFC:
+        send_email(email_type, context)
         pass
-    elif email_type == 'sometype':
+    elif email_type == REQ_TYPE_PLANNING:
+        # specific handling for Planning email
+        send_email(email_type, context)
         pass
     else:
         pass

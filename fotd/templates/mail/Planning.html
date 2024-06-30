@@ -1,0 +1,27 @@
+<!-- templates/mail/Planning.html -->
+<!-- Subject: "[Action Required] Planning request for {{area}} in {{fid}}" -->
+<html>
+<body>
+    <p>Hi {{ first_name }},</p>
+    <p></p>
+    <p>Could you pls plan the following {{area}} backlog item(s) of <b>{{ fid }}</b>?</p>
+    <ul>
+        {% for item_key in item_keys %}
+        <li><a href="https://jiradc.ext.net.nokia.com/browse/{{ item_key }}">{{ item_key }}</a></li>
+        {% endfor %}
+    </ul>
+    <p></p>
+    <!--p>General hints:</p>
+    <ul>
+        <li>Pls add proper issue links in JIRA to indicate the dependency relation with other backlog items, if any.</li>
+        <li>In case the work will be covered in another backlog item, pls add "is secondary to” link to the other item instead of obsoleting this one.</li>
+    </ul>
+    <p></p-->
+    <p>If any question, pls let me know, thanks!</p>
+    <p></p>
+    <p>Best regards,
+    <br>{{ fot_lead|capfirst }}</p>
+    <hr>
+    <p>This mail is sent from FOTD, a collaboration tool developed for FOT.</p>
+</body>
+</html>
