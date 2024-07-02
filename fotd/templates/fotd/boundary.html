@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {%block css %}
 <style>
@@ -10,31 +11,112 @@
         border: 1px solid black;
         padding: 5px;
     }
+    .center-align {
+      text-align: center;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* by default, label/select/input uses one column's width */
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .form-row label {
+        text-align: right;
+        padding-right: 10px;
+    }
+    .form-row textarea, .form-row table, .form-row span {
+        grid-column: span 3; /* spans 3 columns */
+    }
+    .form-row input {
+        grid-column: 2 / 3; /* input spans 1 column, and starts from the 2nd column */
+    }
+
 </style>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
+{% endblock %}
+
+{% block script %} 
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
 {% endblock %}
 
 {% block content %}
-<br><h2>Program Boundary</h2>
-
+<br><h2>Imported Feature Boundaries:</h2>
+<table id="boundaryTable" class="table-bordered center-align">
+    <thead><tr>
+        <th>Release</th>
+        <th>Category</th>
+        <th>SW Done</th>
+        <th>ET EC</th>
+        <th>ET FER</th>
+        <th>ET Done</th>
+        <th>ST EC</th>
+        <th>ST FER</th>
+        <th>ST Done</th>
+        <th>PET/FIVE EC</th>
+        <th>PET/FIVE FER</th>
+        <th>PET/FIVE Done</th>
+        <th>TA</th>
+        <th>CuDo</th>
+    </tr></thead>
+    <tbody>
+{% for boundary in boundaries %}
+    <tr>
+        <td>{{ boundary.release }}</td>
+        <td>{{ boundary.category }}</td>
+        <td>{{ boundary.sw_done }}</td>
+        <td>{{ boundary.et_ec }}</td>
+        <td>{{ boundary.et_fer }}</td>
+        <td>{{ boundary.et_done }}</td>
+        <td>{{ boundary.st_ec }}</td>
+        <td>{{ boundary.st_fer }}</td>
+        <td>{{ boundary.st_done }}</td>
+        <td>{{ boundary.pet_five_ec }}</td>
+        <td>{{ boundary.pet_five_fer }}</td>
+        <td>{{ boundary.pet_five_done }}</td>
+        <td>{{ boundary.ta }}</td>
+        <td>{{ boundary.cudo }}</td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="13">No data available</td>
+    </tr>
+{% endfor %}
+    </tbody>
+</table>
+<br>
+<div>
+<h3>Import a Feature Boundary:</h3>
 <form id="programBoundaryForm">
-    <label for="release">Release:</label>
-    <select id="release" name="release">
-        <option value="24R3">24R3</option>
-        <option value="25R1">25R1</option>
-        <option value="25R2" selected>25R2</option>
-        <option value="25R3">25R3</option>
-    </select>
-    <br>
-    <label for="copiedText">Copied text from program page:</label>
-    <textarea id="copiedText" name="copiedText" rows="10" cols="30"></textarea>
-    <span id="fieldInfo"></span>
-    <br>
-    <input type="submit" value="Save">
+    <div class="form-row">
+        <label for="release">Release:</label>
+        <select id="release" name="release">
+            <option value="24R3">24R3</option>
+            <option value="25R1">25R1</option>
+            <option value="25R2">25R2</option>
+            <option value="25R3">25R3</option>
+            <option value="NA" selected>Select a release...</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="copiedText">Copy one row from the feature boundary table and paste here:</label>
+        <textarea id="copiedText" name="copiedText" rows="3" cols="30" ></textarea>
+        <span id="fieldInfo"><img src="{% static 'pix/import_boundary.png' %}" alt="Instruction"></span>
+    </div>
+    <div class="form-row">
+        <label for="parsedData">Data preview:</label>
+        <table id="parsedData" name="parsedData"></table>
+    </div>
+    <div class="form-row">
+        <input type="submit" value="Import">
+    </div>
 </form>
-<table id="parsedData"></table>
+</div>
+
+<br>
+
 {% endblock %}
 
-{% block script %}
+{% block bottom %}
 <script>
     $(document).ready(function() {
         function processLines(copiedText) {
@@ -57,6 +139,8 @@
             var lines = processLines(copiedText);
                 
             if (lines.length == 13) {
+                $('#fieldInfo').html('The text is correctly parsed into below table. <br>Click "Import" to save the data.');
+
                 var data = {};
                 var fields = ['Category', 'SW Done', 'ET EC', 'ET FER', 'ET Done', 'ST EC', 'ST FER', 'ST Done', 'PET/FIVE EC', 'PET/FIVE FER', 'PET/FIVE Done', 'TA', 'CuDo'];
                 for (var i = 0; i < fields.length; i++) {
@@ -78,7 +162,10 @@
                 }
                 table.append(row);
             } else {
-                $('#fieldInfo').text('Wrong field number: ' + lines.length + '!\nPlease copy a whole line from the Program boundary table.');
+                $('#parsedData').empty();
+                $('#fieldInfo').html('Wrong field number: ' + lines.length + ' (should be 13).<br>'
+                + '<br>Please copy a whole row from the Feature boundary table.'
+                + '<br>For any empty cell, pls manually insert "-" or "NA" to keep the format.');
             }
         });
 
@@ -86,6 +173,11 @@
         e.preventDefault();
 
         var release = $('#release').val();
+        if (release == 'NA') {
+            alert('Please select a release.');
+            return;
+        }
+
         var copiedText = $('#copiedText').val();
 
         var lines = processLines(copiedText);
@@ -106,12 +198,24 @@
             data: data,
             success: function(response) {
                 alert('Data saved successfully.');
+                location.reload();
             },
-            error: function(error) {
-                alert('An error occurred.');
+            error: function(xhr) { // xhr 是 XMLHttpRequest 对象
+                var errorMessage = 'An error occurred.';
+                if(xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                alert(errorMessage);
             }
         });
     });
 });
+
+$('#boundaryTable').DataTable({
+    "paging": false,
+    "ordering": false,
+    "searching": false,
+    "info": false
+    });
 </script>
 {% endblock %}

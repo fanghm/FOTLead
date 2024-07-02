@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import date, datetime, timedelta
+from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
@@ -58,10 +59,11 @@ def detail(request, fid):
 
 def feature(request, fid):
     feature = Feature.objects.get(id=fid)
+    rel = feature.release[-4:]  # use the last 4 chars since LLF has multiple releases
 
     context = {
         'feature': feature,
-        'ProgramBoundary': ProgramBoundary.objects.filter(release=feature.release),
+        'ProgramBoundary': ProgramBoundary.objects.filter(release=rel),
         }
     return render(request, 'fotd/feature.html', context)
 
@@ -173,6 +175,9 @@ def ajax_task_status(request, tid):
         return HttpResponse(update)
     else:
         return HttpResponse('No POST data')
+
+def login(request):
+    return render(request, 'fotd/login.html')
 
 # yy: year in 2 digits, e.g. 22 for 2022
 def fb(request, yy):
@@ -291,6 +296,10 @@ def check_exec_issue(result, current_fb):
             _add_tag(item, "delayed")
             _add_hint(item, "Delayed! Committed to deliver at " + item['RC_FB'])
 
+        # if item['Start_FB'] and item['Start_FB'] < current_fb and item['Progress'] <= 0:
+        #     _add_tag(item, "should_start")
+        #     _add_hint(item, "Should have started but no progress")
+
     return
 
 def backlog(request, fid):
@@ -362,7 +371,10 @@ def backlog(request, fid):
         optional_fields = {k: v for k, v in optional_fields.items() if v is not None and v != ''}
         
         # Create the db object
-        db_object = BacklogQuery.objects.create(**mandatory_fields, **optional_fields)
+        try:
+            db_object = BacklogQuery.objects.create(**mandatory_fields, **optional_fields)
+        except Exception as e:
+            print(f"Failed to create BacklogQuery record: {e}")
 
     current_fb = request.session['fb'][2:]
     if not (start_earliest and end_latest):   # no plan at all, for a new feature
@@ -391,12 +403,15 @@ def backlog(request, fid):
 
     check_exec_issue(result, current_fb)
 
-    boundary = Feature.objects.get(id=fid).boundary
-    if boundary:
-        context['boundary'] = boundary
-        not_fitting_items = check_plan_fitting(result, boundary)
-        if not_fitting_items:
-            context['not_fitting_items'] = not_fitting_items
+    try:
+        boundary = Feature.objects.get(id=fid).boundary
+        if boundary:
+            context['boundary'] = boundary
+            not_fitting_items = check_plan_fitting(result, boundary)
+            if not_fitting_items:
+                context['not_fitting_items'] = not_fitting_items
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     context.update({
         'result': result,
@@ -477,18 +492,26 @@ def ajax_add_fot_members(request, fid):
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 def add_program_boundary(request):
-    return render(request, 'fotd/boundary.html')
+    context = {
+        'boundaries': ProgramBoundary.objects.all().order_by('release'),
+    }
+    return render(request, 'fotd/boundary.html', context)
 
 @csrf_exempt
 def ajax_program_boundary(request):
     if request.method == 'POST':
         fields = ['release', 'category', 'sw_done', 'et_ec', 'et_fer', 'et_done', 'st_ec', 'st_fer', 'st_done', 'pet_five_ec', 'pet_five_fer', 'pet_five_done', 'ta', 'cudo']
         data = {field: request.POST.get(field).strip() for field in fields}
-
         program_boundary = ProgramBoundary(**data)
-        program_boundary.save()
-
-        return JsonResponse({'status': 'success'})
+        
+        try:
+            program_boundary.save()
+            return JsonResponse({'status': 'success'})
+        except IntegrityError as e:
+            return JsonResponse({'status': 'error', 'message': 'A unique constraint violation occurred, do not import the same feature boundary repeatedly.'}, status=400)
+        except Exception as e:
+            print(f"Failed to save into database: {e}")
+            return JsonResponse({'status': 'error', 'message': 'An unexpected error occurred.'}, status=500)
 
     return JsonResponse({'status': 'error'})
 
