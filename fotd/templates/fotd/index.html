@@ -122,9 +122,10 @@
   </main>
 
   <div class="center">
-    <input type="text" id="prId" placeholder="Search a Pronto" autocomplete="on">
-    <input type="text" id="featId" placeholder="Show backlog structure of a feature" style="min-width: 330px;">
-    <input type="text" id="featureId" placeholder="List CA items of a feature" >
+    <input type="text" id="searchPr" placeholder="Search a Pronto" autocomplete="on">
+    <input type="text" id="dispBacklogTree" placeholder="Display backlog structure of a feature" style="min-width: 330px;">
+    <input type="text" id="listBacklogItems" placeholder="List CA items of a feature" >
+    <input type="text" id="visualizeBacklog" placeholder="Visualize the backlog of a feature" >
   </div>
 
   <div class="progress">
@@ -145,7 +146,7 @@
 
   <script>
     $(document).ready(function() {
-      $('#prId').keypress(function(event) {
+      $('#searchPr').keypress(function(event) {
         var keycode = (event.keyCode ? event.keyCode : event.which);
         if(keycode == '13'){
           var val = $(this).val().trim();
@@ -160,37 +161,43 @@
         }
       });
     
-    $('#featId').keypress(function(event) {
-        var keycode = (event.keyCode ? event.keyCode : event.which);
-        if(keycode == '13'){
-          var val = $(this).val().trim();
-          if (val.startsWith('CB') && !(val.endsWith('SR') || val.endsWith('CR')) ) {
-            val = val + '-SR';
-          } else if (!isNaN(val)) { // if all numbers
-            val = val.padStart(6, '0');
-            val = 'CB' + val + '-SR';
-          }
-          
-          var url = 'https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~' + val + '%22%2C%22type%22%3A%22jql%22%7D%7D#';
-          window.open(url, '_blank'); 
+    function handleKeypress(event, urlTemplate, isJira) {
+      var keycode = (event.keyCode ? event.keyCode : event.which);
+      if (keycode == '13') {
+        var featureId = $(this).val().trim();
+        if (featureId.startsWith('CB') && !(featureId.endsWith('SR') || featureId.endsWith('CR'))) {
+          featureId += '-SR';
+        } else if (!isNaN(featureId)) { // if all numbers
+          featureId = featureId.padStart(6, '0');
+          featureId = 'CB' + featureId + '-SR';
         }
-      });
 
-      $('#featureId').keypress(function(event) {
-        var keycode = (event.keyCode ? event.keyCode : event.which);
-        if(keycode == '13'){
-          var val = $(this).val().trim();
-          if (val.startsWith('CB') && !(val.endsWith('SR') || val.endsWith('CR')) ) {
-            val = val + '-SR';
-          } else if (!isNaN(val)) { // if all numbers
-            val = val.padStart(6, '0');
-            val = 'CB' + val + '-SR';
-          }
-          
-          var url = 'https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22issuetype%20%3D%20%5C%22Competence%20Area%5C%22%20%20AND%20(%5C%22Feature%20ID%5C%22%20~' + val + ')%20and%20status%20not%20in%20(done%2C%20obsolete)%22%2C%22type%22%3A%22jql%22%7D%7D#'
-          window.open(url, '_blank'); 
+        var url;
+        if (isJira) {
+          var str = urlTemplate.replace(/\\\"/g, '\\"');
+          var encodedStr = encodeURIComponent(str);
+          //var requiredStr= "issuetype%20%3D%20%5C%22Competence%20Area%5C%22%20And%20status%20not%20in%20(done%2C%20obsolete)%20AND%20%5C%22Feature%20ID%5C%22%20~";
+          //console.log(`${str}\n${encodedStr}\n${requiredStr}`);
+          url = `https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22${encodedStr}${featureId}%22%2C%22type%22%3A%22jql%22%7D%7D#`;
+        } else {
+          url = `/backlog/${featureId}/`;
         }
-      });
+        window.open(url, '_blank');
+      }
+    }
+
+    $('#dispBacklogTree').keypress(function(event) {
+      handleKeypress.call(this, event, "project in (FFB) AND \\\"Feature ID\\\" ~", true);
+    });
+
+    $('#listBacklogItems').keypress(function(event) {
+      var q = "issuetype = \\\"Competence Area\\\" AND status not in (done, obsolete) AND \\\"Feature ID\\\" ~";
+      handleKeypress.call(this, event, q, true);
+    });
+
+    $('#visualizeBacklog').keypress(function(event) {
+      handleKeypress.call(this, event, "", false);
+    });
 
     });
   </script>
