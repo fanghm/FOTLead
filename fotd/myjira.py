@@ -8,12 +8,14 @@ def _queryJira(jql_str, field_dict):
     subfeatures = set()
     start_earliest = None
     end_latest = None
+    rfc_ratio = committed_ratio = 0
     rfc_count = committed_count = 0
     total_spent = total_remaining = 0
     total_count = json_result['total']
     print(f"Total count: {total_count}")
 
     for issue in json_result['issues']:
+        # the first field is always the key
         issue_dict = {'Key': issue['key']}
         for field_name, custom_name in field_dict.items():
             value = issue['fields'][custom_name]
@@ -50,7 +52,7 @@ def _queryJira(jql_str, field_dict):
 
         # get sub-feature set
         tokens = issue_dict['Item_ID'].split('-', 3)
-        if len(tokens) == 4:
+        if len(tokens) >= 3:
             subfeatures.add(tokens[2])
         else:
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
@@ -72,7 +74,7 @@ def _queryJira(jql_str, field_dict):
         rfc_ratio = int(rfc_count * 100 / total_count)
         committed_ratio = int(committed_count * 100 / total_count)
 
-    keys_to_hide = ['Assignee_Email', 'Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
+    keys_to_hide = ['Assignee_Email', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
     #if committed_count < total_count:   # not all committed
     #    keys_to_hide.append('RC_FB')
     

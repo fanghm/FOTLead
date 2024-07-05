@@ -13,7 +13,7 @@
     .new_added {
       font-weight: bold;
     }
-    .duesoon {
+    .duesoon, .should_start {
       background-color: orange;
     }
     .delayed, .overdue, .not_fitting, .not_committed {
@@ -41,14 +41,17 @@
     }
     
   </style>
-  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
   <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.5.0/css/rowGroup.dataTables.min.css">
 {% endblock %}
 
 {% block script %} 
-  <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
   <script src="{% static 'fotd/jquery-ui.min.js' %}"></script>
+  <!-- RowGroup requires DataTables 1.11 or newer -->
+  <script type="text/javascript" src="https://cdn.datatables.net/2.0.8/js/dataTables.js" ></script>
 
+  <script src="https://cdn.datatables.net/rowgroup/1.5.0/js/dataTables.rowGroup.min.js"></script>
 {% endblock %}
 
 {% block nav_link %} 
@@ -67,16 +70,20 @@
 </div>
 
 <div class="container-fluid">
-  <!--div class="row">
-      <label for="subfeature">Filter by Subfeature:</label>
-      <select class="form-control" name="subfeature">
-        <option value="all" selected>All</option>
-        {% for subfeature in subfeatures %}
-          <option value="{{ subfeature }}" {% if feature.risk == subfeature %}selected{% endif %}>-{{ subfeature }}</option>
-        {% endfor %}
-      </select>
-  </div-->
-  
+  <ul>
+    <li>
+        <a class="group-by" data-column="1">Group by SubFeature</a>
+    </li>
+    <li>
+        <a class="group-by" data-column="3">Group by Activity Type</a>
+    </li>
+    <li>
+        <a class="group-by" data-column="2">Group by Competence Area</a>
+    </li>
+    <li>
+        <a class="group-by" data-column="-1">No Group</a>
+    </li>
+  </ul>
   <table id='backlog-table' class="table stripe hover"><!--table-striped stripe -->
     <thead>
       <tr>
@@ -113,8 +120,9 @@
 
             {% elif field_name == "End_FB" %}
               {% if field_value %} 
-              <td class="no-wrap {{item.tags}}" {% if item.hints %} data-tooltip="{{ item.hints|safe }}" {% endif %}>
+              <td class="no-wrap {{item.tags}}" {% if item.hints %} title="{{ item.hints|safe }}" data-tooltip="{{ item.hints|safe }}" {% endif %}>
                 {{ field_value }}
+                {% if item.Key in endfb_changed_items %} <span style="font-size: x-small;">({{ endfb_changed_items|get_previous_end_fb:item.Key }})</span> {% endif %}
               {% else %}
               <td class="no-wrap" style="font-size: 0.7em;">(Not Set)
                 {% if item.Assignee %}
@@ -125,7 +133,6 @@
                 </select>
                 {% endif %}
               {% endif %}
-              {# if item.Key in endfb_changed_items %} <span style="font-size: x-small;">({{ endfb_changed_items|get_previous_end_fb:item.Key }})</span> {% endif #}
               </td>
             
             {% elif field_name == "RC_Status" %}
@@ -241,7 +248,7 @@ $(document).ready(function() {
   var numColumns = $('.table thead th').length;
 
   // Generate an array of column indexes from 10 to the last column
-  var nonSortableColumns = Array.from({length: numColumns - 9}, (_, i) => i + 9);
+  var nonSortableColumns = Array.from({length: numColumns - 10}, (_, i) => i + 10);
 
   // add <tfoot> tag with same number of <th></th> as the table columns
   var tfoot = '<tfoot>';
@@ -251,25 +258,35 @@ $(document).ready(function() {
   $(".table").append(tfoot);
 
   var table = $('.table').DataTable({
+    order: [[1, "asc"],[3, "asc"]], 
+    responsive: true,
+    //orderFixed: [1, 'asc'],
+    rowGroup: { enable: false },
     //"stateSave": true,
     "scrollX": true,
     "sScrollXInner": "100%",  // if scrollX is true without this line, table body and header might not align
     "pageLength": 20,
-    "lengthChange": false, // dont show "Show xx entries" by default
+    //"lengthChange": false, // dont show "Show xx entries" by default
     "pagingType": "simple", // use simple pagination
 
     "columnDefs": [
+      {
+        target: 1,  // hide the Item_ID column which is required for grouping by sub-features
+        visible: false
+      },
+      // make the fb columns not sortable
       { "orderable": false, "targets": nonSortableColumns },
-      { "className": "center-align", "targets": [4,5,6,7] }, // zero-based col index
+      { "className": "center-align", "targets": [5,6,7,8] }, // zero-based col index
 
-      // render multiple tooltip for the 6th column: End_FB
-      { "targets": 5,
-        "render": function(data, type, row, meta) {
-          var tooltipContent = $(meta.settings.aoData[meta.row].anCells[meta.col]).data('tooltip');
-          return tooltipContent ? `<div title="${tooltipContent}">${data}</div>` : `<div>${data}</div>`;
-        }
-      }
     ],
+    "initComplete": function(settings, json) {
+        var api = this.api();
+        var numRows = api.data().length;
+        if (numRows >= 20) {
+          api.page.len(50).draw();
+          $('#' + api.table().node().id + '_length').show();
+        }
+    },
     "drawCallback": function(settings) {
       var api = this.api();
       if (api.page.info().pages <= 1) { 
@@ -277,7 +294,7 @@ $(document).ready(function() {
       } else {
         $('#' + api.table().node().id + '_paginate').show();
       }
-      if (api.page.info().recordsTotal <= 20) {
+      if (api.page.info().recordsTotal < 20) {
         $('#' + api.table().node().id + '_length').hide(); // if record number less than 20, hide "Showing xx entries" dropdown
       } else {
         $('#' + api.table().node().id + '_length').show();
@@ -296,42 +313,65 @@ $(document).ready(function() {
       };
     
       // Total over all pages
-      total_effort = api.column(6).data().reduce((a, b) => intVal(a) + intVal(b), 0);
-      total_remaining = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+      total_effort = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+      total_remaining = api.column(8).data().reduce((a, b) => intVal(a) + intVal(b), 0);
     
       // count the unique CA values in the 2nd column
-      let caValues = api.column(1).data().toArray();
+      let caValues = api.column(2).data().toArray();
       let uniqueCaValues = new Set(caValues);
       let uniqueCaCount = uniqueCaValues.size;
 
       // Calculate the percentage of rows with "Ready for Commitment" in the 9th column
-      let totalRows = api.column(8).data().length;
-      let rfcCount = api.column(8).data().filter(text => text === "Ready for Commitment").length;
-      let rfcOrCommittedCount = api.column(8).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
+      let totalRows = api.column(9).data().length;
+      let rfcCount = api.column(9).data().filter(text => text === "Ready for Commitment").length;
+      let rfcOrCommittedCount = api.column(9).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
       let rfcPercentage = (rfcOrCommittedCount / totalRows * 100).toFixed(0);
       let donePercentage = ((total_effort - total_remaining) / total_effort * 100).toFixed(1);
     
       // Update footer
-      api.column(1).footer().innerHTML = `${uniqueCaCount} Areas`;
-      api.column(3).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
-      api.column(6).footer().innerHTML = `${total_effort} Hours`;
-      api.column(7).footer().innerHTML = `${total_remaining} Hours`;
-      api.column(8).footer().innerHTML = `${rfcPercentage}% ` + (rfcCount > 0 ? 'RfC' : 'Committed');
-      api.column(9).footer().innerHTML = `${donePercentage}% Done`;
+      api.column(2).footer().innerHTML = `${uniqueCaCount} Areas`;
+      api.column(4).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
+      api.column(7).footer().innerHTML = `${total_effort} Hrs`;
+      api.column(8).footer().innerHTML = `${total_remaining} Hrs`;
+      api.column(9).footer().innerHTML = `${rfcPercentage}% ` + (rfcCount > 0 ? 'RfC' : 'Committed');
+      api.column(10).footer().innerHTML = `${donePercentage}% Done`;
     }
 
   });
 
-  $("div[title]").tooltip({
-      track: true,  // optional
-      content: function() {
-        return $(this).attr('title');
+  // grouping
+  $('a.group-by').on('click', function(e) {
+    e.preventDefault();
+
+    var dataColumn = $(this).attr('data-column');
+    if(dataColumn === '-1') { // no grouping      
+      if(table.rowGroup().enabled())
+        table.rowGroup().disable().draw();
+        //table.order.fixed({ pre: [[1, 'asc']] }).draw();  // ordery by sub-feature by default
+    } else {
+      if(!table.rowGroup().enabled())
+        table.rowGroup().enable().draw();
+
+      if(dataColumn === '1') { // order by sub-feature
+        table.rowGroup().dataSrc(function(row) {
+          var subfeature = row[1].split('-', 4).slice(0, 3).join('-');
+          return subfeature;
+        });
+        //table.order.fixed([1, 'asc']).draw();
+        table.order.fixed({ pre: [[1, 'asc']] }).draw();  // ordery by itemID by default
+      } else {
+        table.rowGroup().dataSrc(dataColumn);
       }
+    }
+  });
+  // Change the fixed ordering when the data source is updated
+  table.on('rowgroup-datasrc', function (e, dt, val) {
+      table.order.fixed({ pre: [[val, 'asc']] }).draw();
   });
 
   // Use event delegation to catch the click event on the dynamically added button
   $('body').on('click', '#copyToClipboard', function() {
-    var columnData = table.column(3).data();
+    var columnData = table.column(4).data();
   
     var filteredData = columnData.filter(function(value) {
       return !value.includes("Not Assigned");
