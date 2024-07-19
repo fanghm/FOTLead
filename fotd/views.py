@@ -8,7 +8,7 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
 from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery, ProgramBoundary
-from .myjira import queryJiraCaItems
+from .myjira import queryJiraCaItems, get_text2, set_text2
 from .mailer import send_email
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -18,7 +18,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
 #@login_required
 def index(request):
-    features = Feature.objects.order_by('release', 'id')
+    features = Feature.objects.exclude(phase='Done').order_by('release', 'id')
     
     features_with_task_count = []
     for feature in features:
@@ -40,7 +40,8 @@ def index(request):
     return render(request, 'fotd/index.html', context)
 
 def detail(request, fid):
-    feature = Feature.objects.get(id=fid)
+    #feature = Feature.objects.get(id=fid)
+    feature = get_object_or_404(Feature, id=fid)
     updates = FeatureUpdate.objects.filter(feature__id=fid).order_by('update_date')
     #roles = FeatureRoles.objects.get(feature__id=fid)
 
@@ -80,8 +81,8 @@ def ajax_feature_update(request, fid):
         feature = Feature.objects.get(id=fid)
         for key, value in request.POST.items():
             if hasattr(feature, key):
-                if key == 'boundary':
-                    value = ProgramBoundary.objects.get(id=value)
+                if key == 'boundary':    # boundary can be empty
+                    value = ProgramBoundary.objects.get(id=value) if isinstance(value, int) else None
                 setattr(feature, key, value)
 
         feature.save()
@@ -92,7 +93,6 @@ def ajax_feature_update(request, fid):
 @csrf_exempt
 def ajax_feature_status(request, fid):
     feature = Feature.objects.get(id=fid)
-    logging.debug('featureId: ' + fid);
 
     if request.method == 'POST':
         update_text = request.POST['update_text']
@@ -318,15 +318,19 @@ def backlog(request, fid):
         subfeatures = query.subfeatures.split(';')
         total_spent = query.total_spent
         total_remaining = query.total_remaining
+
+        # TODO: read endfb_changed_items and new_added_keys from query.changes, after optimization the 'changes' as json format
+
         #print(f"{fid}: last query at {query.query_time}: {len(result)} items")
     
     jira_query = False
+    query_done = True if request.GET.get('query_done') else False
     new_added_keys = []
     endfb_changed_items = {}
     if request.GET.get('refresh') or first_query:
         jira_query = True
         print(f"{fid}: query from JIRA")
-        (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = queryJiraCaItems(fid)
+        (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = queryJiraCaItems(fid, query_done)
 
         changes = ''
         if not first_query:
@@ -380,7 +384,7 @@ def backlog(request, fid):
     if not (start_earliest and end_latest):   # no plan at all, for a new feature
         print(f"{fid}: start/endfb is empty, no plan at all")
         display_sprints = [current_fb]
-    elif start_earliest < current_fb:
+    elif start_earliest < current_fb and not query_done:
         display_sprints = _get_fbs(current_fb, end_latest)
     else:
         display_sprints = _get_fbs(start_earliest, end_latest)
@@ -411,7 +415,7 @@ def backlog(request, fid):
             if not_fitting_items:
                 context['not_fitting_items'] = not_fitting_items
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Error: {e}")
 
     context.update({
         'result': result,
@@ -513,7 +517,7 @@ def ajax_program_boundary(request):
             print(f"Failed to save into database: {e}")
             return JsonResponse({'status': 'error', 'message': 'An unexpected error occurred.'}, status=500)
 
-    return JsonResponse({'status': 'error'})
+    return JsonResponse({'status': 'error'}, status=400)
 
 
 REQ_TYPE_PLANNING = "Planning"
@@ -538,3 +542,25 @@ def ajax_send_email(request, email_type):
         pass
 
     return JsonResponse({'status': 'success', 'email_type': email_type})
+
+@csrf_exempt
+def ajax_get_text2(request, fid):
+    result = get_text2(fid)
+    return JsonResponse(result) if result['status'] == 'success' else JsonResponse(result, status=500)
+
+@csrf_exempt
+def ajax_set_text2(request, fid):
+    jira_key = request.POST.get('jira_key')
+    text2 = request.POST.get('text2')
+    risk_status = request.POST.get('risk_status')
+    result = set_text2(jira_key, text2, risk_status)
+
+    if result['status'] == 'success':
+        feature = Feature.objects.get(id=fid)
+        feature.text2 = text2
+        feature.risk_status = risk_status
+        feature.risk_detail = request.POST.get('risk_detail')
+        feature.save()
+        return JsonResponse(result)
+    else:
+        return JsonResponse(result, status=500)

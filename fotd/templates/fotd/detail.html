@@ -16,7 +16,8 @@
     <div class="header">
       <div style="display: flex; align-items: center;">
         <h2>Basic Info</h2>
-        <a href="{% url 'fotd:feature' feature.id %}"><span class="edit-icon">&#X270E;</span></a>
+        <!--a href="{% url 'fotd:feature' feature.id %}"><span class="edit-icon">&#X270E;</span></a-->
+        <button id="editFeatureBtn">*</button>
       </div>
     </div>
 
@@ -26,7 +27,7 @@
         <li>Release: {{ feature.release }} | Priority: {{ feature.priority }}</li>
         <li>Applicable program boundary: {{ feature.boundary.category }}</li>
         <li>Desc: {{ feature.desc|urlize }}</li>
-        <li>Text2: {{ feature.text2|escape|linebreaksbr }}</li>
+        <li>Text2:<br>{{ feature.text2|escape|linebreaksbr }}</li>
         </li>
       </ul>
     </div>
@@ -130,6 +131,11 @@
 {% block bottom %}
   <script>
     $(document).ready(function(){
+      $('#editFeatureBtn').click(function(){
+        var url = "{% url 'fotd:feature' feature.id %}";
+        window.location.href = url;
+      });
+
       $('form').each(function() {
         $(this).on('keypress', function(e) {
           var keyCode = e.keyCode || e.which;

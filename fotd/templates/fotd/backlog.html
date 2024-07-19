@@ -44,6 +44,7 @@
   <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
   <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.5.0/css/rowGroup.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.css">
 {% endblock %}
 
 {% block script %} 
@@ -52,6 +53,14 @@
   <script type="text/javascript" src="https://cdn.datatables.net/2.0.8/js/dataTables.js" ></script>
 
   <script src="https://cdn.datatables.net/rowgroup/1.5.0/js/dataTables.rowGroup.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.dataTables.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.colVis.min.js"></script>
 {% endblock %}
 
 {% block nav_link %} 
@@ -68,31 +77,25 @@
   &nbsp;<a href="{{request.get_full_path}}?refresh=true">Refresh</a>&nbsp;|&nbsp;
   <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open JIRA Structure</a>
 </div>
+{% if not result %}
+  <p style="color: red; font-weight: bold;">Feature backlog not found, pls make sure the feature ID is correct.</p>
+  <p>If the feature already done, click 
+  <a href="{% if '?' in request.get_full_path %}{{ request.get_full_path }}&query_done=True{% else %}{{ request.get_full_path }}?query_done=True{% endif %}">
+  here</a>.</p>
+{% else %}
 
 <div class="container-fluid">
-  <ul>
-    <li>
-        <a class="group-by" data-column="1">Group by SubFeature</a>
-    </li>
-    <li>
-        <a class="group-by" data-column="3">Group by Activity Type</a>
-    </li>
-    <li>
-        <a class="group-by" data-column="2">Group by Competence Area</a>
-    </li>
-    <li>
-        <a class="group-by" data-column="-1">No Group</a>
-    </li>
-  </ul>
   <table id='backlog-table' class="table stripe hover"><!--table-striped stripe -->
     <thead>
       <tr>
         {% for field_name in display_fields %}
-          <th>{{ field_name|replace:"_, " }}</th>
+          <th rowspan="2">{{ field_name|replace:"_, " }}</th>
         {% endfor %}
-
+          <th colspan="{{display_sprints|length}}" data-dt-order="disable">Plan Visualization</th>
+      </tr>
+      <tr>
         {% for fb in display_sprints %}
-          <th> {{ fb }} </th>
+          <th data-dt-order="disable"> {{ fb }} </th>
         {% endfor %}
       </tr>
     </thead>
@@ -240,12 +243,39 @@
   </table>
   {% endif %}
 </div>
+{% endif %}
 
 <script>
-  
 $(document).ready(function() {
+  function _group_by(dt, dataColumn) {
+    if(dataColumn === -1) { // no grouping      
+      if(dt.rowGroup().enabled()) {
+        dt.rowGroup().disable().draw();
+      }
+    } else {
+      if(!dt.rowGroup().enabled())
+        dt.rowGroup().enable().draw();
+
+      dt.rowGroup().dataSrc(dataColumn);
+    }
+  }
+
+  var exportFormatter = {
+    format: {
+        body: function (data, row, column, node) {
+          var strippedData = data.replace(/<[^>]+>/g, '');
+          //console.log(`row ${row} col ${col}: ${strippedData}`);
+          if(strippedData.toLowerCase().includes('(not set)')) {
+            return "(Not Set)";
+          } else {
+            return strippedData;
+          }
+        }
+    }
+  };
+
   // Get the number of columns
-  var numColumns = $('.table thead th').length;
+  var numColumns = $('.table thead th').length - 1; // -1 because of the colspan th
 
   // Generate an array of column indexes from 10 to the last column
   var nonSortableColumns = Array.from({length: numColumns - 10}, (_, i) => i + 10);
@@ -258,7 +288,8 @@ $(document).ready(function() {
   $(".table").append(tfoot);
 
   var table = $('.table').DataTable({
-    order: [[1, "asc"],[3, "asc"]], 
+    ordering: true,
+    order: [[5, "asc"],[2, "asc"]], 
     responsive: true,
     //orderFixed: [1, 'asc'],
     rowGroup: { enable: false },
@@ -268,38 +299,138 @@ $(document).ready(function() {
     "pageLength": 20,
     //"lengthChange": false, // dont show "Show xx entries" by default
     "pagingType": "simple", // use simple pagination
-
-    "columnDefs": [
-      {
-        target: 1,  // hide the Item_ID column which is required for grouping by sub-features
-        visible: false
-      },
-      // make the fb columns not sortable
-      { "orderable": false, "targets": nonSortableColumns },
-      { "className": "center-align", "targets": [5,6,7,8] }, // zero-based col index
-
-    ],
-    "initComplete": function(settings, json) {
-        var api = this.api();
-        var numRows = api.data().length;
-        if (numRows >= 20) {
-          api.page.len(50).draw();
-          $('#' + api.table().node().id + '_length').show();
+    layout: {
+        topStart: {
+            buttons: [
+              'pageLength',
+              {
+                extend: 'spacer',                
+                style: 'bar'
+              },
+              {
+                extend: 'collection',
+                autoClose: true,
+                text: 'Group by',
+                buttons: [
+                    {
+                        text: 'Sub-feature',
+                        action: function (e, dt, node, config) {
+                          _group_by(dt, 10);
+                        }
+                    },
+                    {
+                        text: 'Activity Type',
+                        action: function (e, dt, node, config) {
+                          _group_by(dt, 2);
+                        }
+                    },
+                    {
+                        text: 'Competence Area',
+                        action: function (e, dt, node, config) {
+                          _group_by(dt, 1);
+                        }
+                    },
+                    {
+                        text: 'None',
+                        action: function (e, dt, node, config) {
+                          _group_by(dt, -1);
+                        }
+                    }
+                ]
+              },
+              {
+                  extend: 'collection',
+                  autoClose: true,
+                  text: 'Output',
+                  buttons: [
+                      'copy',
+                      {
+                          extend: 'excelHtml5',
+                          filename: '{{fid}}_backlog_{{ date|date:"Ymd" }}',
+                          footer: false,
+                      },
+                      {
+                          extend: 'pdfHtml5',
+                          title: 'Backlog of {{fid}}',
+                          messageBottom: function() {
+                              return '(Exported at ' + new Date().toLocaleString() + ')';
+                          },
+                          orientation: 'landscape',
+                          footer: false,
+                          download: 'open',                        
+                          exportOptions: {
+                              columns: ':visible',
+                              format: {
+                                body: function (data, row, column, node) {
+                                  //console.log(`row ${row} col ${col}: ${data}`);
+                                  return data.toLowerCase().includes('(not set)') ? '(Not Set)' : data.replace(/<[^>]+>/g, '');
+                                },
+                              },
+                          }
+                      },
+                      {
+                          popoverTitle: 'Visibility control',
+                          extend: 'colvis',
+                          collectionLayout: 'two-column',
+                          exclude: [0, 10],
+                      }
+                  ]
+              },
+              { 
+                text: 'Table control',
+                extend: 'collection',                
+                autoClose: true,
+                buttons: [
+                    { 
+                        text: 'Toggle 1-2',
+                        action: function ( e, dt, node, config ) {
+                            dt.column( 1 ).visible( ! dt.column( 1 ).visible() );
+                            dt.column( 2 ).visible( ! dt.column( 2 ).visible() );
+                            this.active(!this.active());
+                        }
+                    },
+                    { 
+                        text: 'Plan Visualization',
+                        action: function ( e, dt, node, config ) {
+                          for (col of nonSortableColumns)
+                            dt.column(col).visible( !dt.column(col).visible() );
+                            
+                          dt.column(9).visible(false); // hide progress column
+                          dt.column(10).visible(false); // hide sub-feature column
+                          this.active(!this.active());
+                        }
+                    },
+                ]
+            },
+            ]
         }
     },
-    "drawCallback": function(settings) {
-      var api = this.api();
-      if (api.page.info().pages <= 1) { 
-        $('#' + api.table().node().id + '_paginate').hide(); // hide pagination if only one page
-      } else {
-        $('#' + api.table().node().id + '_paginate').show();
-      }
-      if (api.page.info().recordsTotal < 20) {
-        $('#' + api.table().node().id + '_length').hide(); // if record number less than 20, hide "Showing xx entries" dropdown
-      } else {
-        $('#' + api.table().node().id + '_length').show();
-      }
-    },
+    "columnDefs": [
+      {
+        target: 10,  // hide the Sub_Feature column, required for grouping by sub-features
+        visible: false
+      },
+
+      // make the fb columns not sortable
+      //{ "orderable": false, "targets": nonSortableColumns },
+
+      { "className": "center-align", "targets": [4,5,6,7] }, // zero-based col index
+
+    ],
+
+    // "drawCallback": function(settings) {
+    //   var api = this.api();
+    //   if (api.page.info().pages <= 1) { 
+    //     $('#' + api.table().node().id + '_paginate').hide(); // hide pagination if only one page
+    //   } else {
+    //     $('#' + api.table().node().id + '_paginate').show();
+    //   }
+    //   if (api.page.info().recordsTotal < 20) {
+    //     $('#' + api.table().node().id + '_length').hide(); // if record number less than 20, hide "Showing xx entries" dropdown
+    //   } else {
+    //     $('#' + api.table().node().id + '_length').show();
+    //   }
+    // },
 
     // footer
     "footerCallback": function (row, data, start, end, display) {
@@ -313,58 +444,33 @@ $(document).ready(function() {
       };
     
       // Total over all pages
-      total_effort = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
-      total_remaining = api.column(8).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+      total_effort = api.column(6).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+      total_remaining = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
     
-      // count the unique CA values in the 2nd column
-      let caValues = api.column(2).data().toArray();
+      // count the number of unique Competence Areas
+      let caValues = api.column(1).data().toArray();
       let uniqueCaValues = new Set(caValues);
       let uniqueCaCount = uniqueCaValues.size;
 
-      // Calculate the percentage of rows with "Ready for Commitment" in the 9th column
-      let totalRows = api.column(9).data().length;
-      let rfcCount = api.column(9).data().filter(text => text === "Ready for Commitment").length;
-      let rfcOrCommittedCount = api.column(9).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
+      // Calculate the percentage of rows with "Ready for Commitment" in the RC_Status column
+      let totalRows = api.column(8).data().length;
+      let rfcCount = api.column(8).data().filter(text => text === "Ready for Commitment").length;
+      let rfcOrCommittedCount = api.column(8).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
       let rfcPercentage = (rfcOrCommittedCount / totalRows * 100).toFixed(0);
       let donePercentage = ((total_effort - total_remaining) / total_effort * 100).toFixed(1);
     
       // Update footer
-      api.column(2).footer().innerHTML = `${uniqueCaCount} Areas`;
-      api.column(4).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
-      api.column(7).footer().innerHTML = `${total_effort} Hrs`;
-      api.column(8).footer().innerHTML = `${total_remaining} Hrs`;
-      api.column(9).footer().innerHTML = `${rfcPercentage}% ` + (rfcCount > 0 ? 'RfC' : 'Committed');
-      api.column(10).footer().innerHTML = `${donePercentage}% Done`;
-    }
+      api.column(1).footer().innerHTML = `${uniqueCaCount} Areas`;
+      api.column(3).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
+      api.column(6).footer().innerHTML = `${total_effort} Hrs`;
+      api.column(7).footer().innerHTML = `${total_remaining} Hrs`;
+      api.column(8).footer().innerHTML = `${rfcPercentage}% ` + (rfcCount > 0 ? 'RfC' : 'Committed');
+      api.column(9).footer().innerHTML = `${donePercentage}% Done`;
+    },
 
   });
 
-  // grouping
-  $('a.group-by').on('click', function(e) {
-    e.preventDefault();
-
-    var dataColumn = $(this).attr('data-column');
-    if(dataColumn === '-1') { // no grouping      
-      if(table.rowGroup().enabled())
-        table.rowGroup().disable().draw();
-        //table.order.fixed({ pre: [[1, 'asc']] }).draw();  // ordery by sub-feature by default
-    } else {
-      if(!table.rowGroup().enabled())
-        table.rowGroup().enable().draw();
-
-      if(dataColumn === '1') { // order by sub-feature
-        table.rowGroup().dataSrc(function(row) {
-          var subfeature = row[1].split('-', 4).slice(0, 3).join('-');
-          return subfeature;
-        });
-        //table.order.fixed([1, 'asc']).draw();
-        table.order.fixed({ pre: [[1, 'asc']] }).draw();  // ordery by itemID by default
-      } else {
-        table.rowGroup().dataSrc(dataColumn);
-      }
-    }
-  });
-  // Change the fixed ordering when the data source is updated
+  // row grouping: change the fixed ordering when the data source is updated
   table.on('rowgroup-datasrc', function (e, dt, val) {
       table.order.fixed({ pre: [[val, 'asc']] }).draw();
   });

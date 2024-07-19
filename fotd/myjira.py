@@ -1,7 +1,15 @@
 from jira import JIRA
+from django.conf import settings
 
-def _queryJira(jql_str, field_dict):
-    jira = JIRA(server = "https://esjirp66.emea.nsn-net.net", basic_auth=('qwn783', 'Lovelife!'))
+JIRA_FIELD_TEXT2 = 'customfield_38727'
+JIRA_FIELD_RISK_STATUS = 'customfield_38754'
+
+def _initJira():
+    return JIRA(server = "https://jiradc.ext.net.nokia.com", basic_auth=(settings.AUTH_USERNAME, settings.AUTH_PASSWORD))
+
+# TODO: for items with secondary links, get the actual logged effort and progress info
+def _queryJira(jql_str, field_dict, keys_to_hide):
+    jira = _initJira()
     json_result = jira.search_issues(jql_str, 0, 200, fields=list(field_dict.values()), json_result=True)
 
     result = []
@@ -54,7 +62,9 @@ def _queryJira(jql_str, field_dict):
         tokens = issue_dict['Item_ID'].split('-', 3)
         if len(tokens) >= 3:
             subfeatures.add(tokens[2])
+            issue_dict['Sub_Feature'] = '-'.join(tokens[:3])
         else:
+            issue_dict['Sub_Feature'] = 'Unknown'
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
 
         # statistics
@@ -74,18 +84,18 @@ def _queryJira(jql_str, field_dict):
         rfc_ratio = int(rfc_count * 100 / total_count)
         committed_ratio = int(committed_count * 100 / total_count)
 
-    keys_to_hide = ['Assignee_Email', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
-    #if committed_count < total_count:   # not all committed
-    #    keys_to_hide.append('RC_FB')
-    
     fields_to_display = [k for k in result[0].keys() if k not in keys_to_hide] if result else []
 
     return (result, subfeatures, fields_to_display, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining)
 
-def queryJiraCaItems(fid):
+# NOTE: the fields will be shown in the backlog table per below sequence, if not hidden
+def queryJiraCaItems(fid, query_done=False):
     field_dict = {
+        #0: Key
         'Item_ID': 'customfield_38702',
         'Summary': 'summary',
+
+        #1-8
         'Competence_Area': 'customfield_38690',
         'Activity_Type': 'customfield_38750',
         'Assignee': 'assignee',
@@ -93,8 +103,12 @@ def queryJiraCaItems(fid):
         'End_FB': 'customfield_38693',
         'Original_Estimate': 'customfield_43292',
         'Time_Remaining': 'customfield_43291',
-        'RC_FB': 'customfield_43490',
         'RC_Status': 'customfield_38728',
+
+        #9: Progress
+        #10: Sub_Feature
+        
+        'RC_FB': 'customfield_43490',
         'FB_Committed_Status': 'customfield_38758', #value
         'Stretch_Goal_Reason': 'customfield_43893', #value
         'Risk_Status': 'customfield_38754',     #value
@@ -102,5 +116,51 @@ def queryJiraCaItems(fid):
         'Logged_Effort': 'customfield_43290',
     }
 
-    jql_str = f'''("Feature ID" ~ {fid}) and issuetype = "Competence Area" AND status not in (done, obsolete) order by "Item ID" '''
-    return _queryJira(jql_str, field_dict)
+    keys_to_hide = ['Assignee_Email', 'Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
+    if query_done:
+        jql_str = f'''("Feature ID" ~ {fid}) and issuetype = "Competence Area" AND status not in (obsolete) order by "Item ID" '''
+    else:
+        jql_str = f'''("Feature ID" ~ {fid}) and issuetype = "Competence Area" AND status not in (done, obsolete) order by "Item ID" '''
+
+    return _queryJira(jql_str, field_dict, keys_to_hide)
+
+
+def get_text2(fid):
+    try:
+        jira = _initJira()
+        jql_str = '''project in (FFB) AND "Feature ID" ~ ''' + fid
+        #print('get_text2 jql: ' + jql_str)
+
+        json_result = jira.search_issues(jql_str 
+                , 0 #startAt 
+                , 1 #200, #maxResults
+                , fields=f'{JIRA_FIELD_TEXT2}, {JIRA_FIELD_RISK_STATUS}'    # text 2
+                #, expand="changelog"
+                , json_result=True
+                )
+
+        issue = json_result['issues'][0]
+        jira_key = issue['key']
+        text2 = issue['fields'][JIRA_FIELD_TEXT2]
+        risk_status = issue['fields'][JIRA_FIELD_RISK_STATUS]['value']
+        #print(f'{fid} key: {jira_key} Text2:{text2}\n')
+        return {'status': 'success', 'text2': text2, 'jira_key': jira_key, 'risk_status': risk_status}
+
+    except Exception as e:
+        print("Error in get_text2():\n" + str(e))
+        return {'status': 'error', 'message': str(e)}
+
+def set_text2(jira_key, text2, risk_status):
+    try:
+        jira = JIRA(server = "https://jiradc.ext.net.nokia.com", basic_auth=(settings.AUTH_USERNAME, settings.AUTH_PASSWORD))
+        issue = jira.issue(jira_key, expand="changelog")
+        update_dict = {
+            JIRA_FIELD_TEXT2: text2,
+            JIRA_FIELD_RISK_STATUS: {'value': risk_status}
+        }
+        issue.update(update_dict)
+        return {'status': 'success'}
+
+    except Exception as e:
+        print("Error in set_text2():\n" + str(e))
+        return {'status': 'error', 'message': str(e)}

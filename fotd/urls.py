@@ -1,16 +1,19 @@
 from django.urls import path
-
+from django.contrib.auth.views import LoginView
 from . import views
 
 app_name = 'fotd'
 urlpatterns = [
     path('', views.index, name='index'),
+    path('login/', LoginView.as_view(template_name='admin/login.html'), name='login'),
     path('fb/<yy>/', views.fb, name='fb'),
 
     path('detail/<fid>/', views.detail, name='detail'),
     path('feature/<fid>/', views.feature, name='feature'),
     path('ajax_feature_update/<fid>/', views.ajax_feature_update, name='ajax_feature_update'),
     path('ajax_feature_status/<fid>/', views.ajax_feature_status, name='ajax_feature_status'),
+    path('ajax_get_text2/<fid>/', views.ajax_get_text2, name='ajax_get_text2'),
+    path('ajax_set_text2/<fid>/', views.ajax_set_text2, name='ajax_set_text2'),
 
     path('ajax_send_email/<str:email_type>/', views.ajax_send_email, name='ajax_send_email'),
 

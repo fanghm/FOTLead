@@ -200,7 +200,7 @@
                 alert('Data saved successfully.');
                 location.reload();
             },
-            error: function(xhr) { // xhr 是 XMLHttpRequest 对象
+            error: function(xhr) { // xhr is a XMLHttpRequest obj
                 var errorMessage = 'An error occurred.';
                 if(xhr && xhr.responseJSON && xhr.responseJSON.message) {
                     errorMessage = xhr.responseJSON.message;

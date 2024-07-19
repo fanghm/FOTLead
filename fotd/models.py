@@ -1,8 +1,11 @@
 from django.db import models
+from django.db.models.signals import post_save
+from django.db.models import JSONField, UniqueConstraint  # for SQLite
+# from django.contrib.postgres.fields import JSONField # for PostgreSQL
+from django.contrib.auth.models import User
+from django.dispatch import receiver
 from django.core.validators import MaxValueValidator
 import datetime
-# from django.contrib.postgres.fields import JSONField # for PostgreSQL
-from django.db.models import JSONField  # for SQLite
 
 MILESTONE_CHOICES = [
     ('N/A',    'N/A'),
@@ -43,6 +46,27 @@ TEAM_ROLES = [
     ('Other Role', 'Other Role'),
 ]
 
+# Extend the User model
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    #email = models.EmailField(max_length=255, blank=True)      # frank.fang@nokia-sbell.com
+    #login_id = models.CharField(max_length=100, blank=True)     # qwn783
+    employee_id = models.CharField(max_length=8, blank=True)    # 61403612
+    disp_name = models.CharField(max_length=100, blank=True)    # Frank Fang (NSB)
+    title = models.CharField(max_length=100, blank=True)        # SW Engineer
+    department = models.CharField(max_length=100, blank=True)   # 5G R&D
+    country = models.CharField(max_length=100, blank=True)      # China
+    created = models.CharField(max_length=20, blank=True)       # 2021-01-01
+
+    def __str__(self):
+        return self.user.username
+
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+    instance.userprofile.save()
+
 class ProgramBoundary(models.Model):
     release = models.CharField(max_length=4)
     category = models.CharField(max_length=50)
@@ -67,6 +91,9 @@ class ProgramBoundary(models.Model):
 
     class Meta:
         verbose_name_plural = "Program Boundaries"
+        constraints = [
+            UniqueConstraint(fields=['release', 'category'], name='unique_release_category')
+        ]
 
 # feature model
 class Feature(models.Model):
@@ -89,7 +116,7 @@ class Feature(models.Model):
     gantt_link = models.CharField(max_length=100, blank=True, verbose_name='Gantt Chart', help_text='Link to the Gantt Chart')
     rep_link = models.CharField(max_length=100, blank=True, verbose_name='Reporting Portal', help_text='Link to the Reporting Portal')
     
-    risk = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
+    risk_status = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
     risk_detail = models.CharField(max_length=50, blank=True)
     text2 = models.CharField(max_length=512, blank=True)
     desc = models.TextField(blank=True)
@@ -208,3 +235,4 @@ class BacklogQuery(models.Model):
     class Meta:
         ordering = ['-query_time']
         verbose_name_plural = "Backlog Queries"
+
