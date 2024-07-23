@@ -1,6 +1,6 @@
 from django.urls import path
 from django.contrib.auth.views import LoginView
-from . import views
+from . import views, task_views
 
 app_name = 'fotd'
 urlpatterns = [
@@ -20,11 +20,13 @@ urlpatterns = [
     path('ajax_add_feature_roles/<fid>/', views.ajax_add_feature_roles, name='ajax_add_feature_roles'),
     path('ajax_add_fot_members/<fid>/', views.ajax_add_fot_members, name='ajax_add_fot_members'),
 
-    path('task/<tid>/', views.task, name='task'),
-    path('ajax_task_add/<fid>/', views.ajax_task_add, name='ajax_task_add'),
-    path('ajax_task_update/<tid>/', views.ajax_task_update, name='ajax_task_update'),
-    path('ajax_task_delete/<tid>/', views.ajax_task_delete, name='ajax_task_delete'),
-    path('ajax_task_status/<tid>/', views.ajax_task_status, name='ajax_task_status'),
+    # task_views
+    path('task/<tid>/', task_views.edit_task, name='edit_task'),
+    path('task/view/<tid>/', task_views.view_task, name='view_task'),
+    path('ajax_task_add/<fid>/', task_views.ajax_task_add, name='ajax_task_add'),
+    path('ajax_task_update/<tid>/', task_views.ajax_task_update, name='ajax_task_update'),
+    path('ajax_task_delete/<tid>/', task_views.ajax_task_delete, name='ajax_task_delete'),
+    path('ajax_task_status/<tid>/', task_views.ajax_task_status, name='ajax_task_status'),
     
     path('add_program_boundary/', views.add_program_boundary, name='add_program_boundary'),
     path('ajax_program_boundary/', views.ajax_program_boundary, name='ajax_program_boundary'),

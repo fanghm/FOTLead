@@ -26,9 +26,9 @@
       </select>
     </div>
         
-    <div id="riskDetail" class="form-group" {% if feature.risk_status != "Yellow" and feature.risk_status != "Red" %}style="display: none;"{% endif %}>
-      <label for="rep_link">Risk Detail:</label>
-      <input class="form-control" type="text" name="risk_detail" value="{{feature.risk_detail}}">
+    <div class="form-group" {% if feature.risk_status != "Yellow" and feature.risk_status != "Red" %}style="display: none;"{% endif %}>
+      <label for="risk_detail">Risk Detail:</label>
+      <input id="riskDetail" class="form-control" type="text" name="risk_detail" value="{{feature.risk_detail}}">
     </div>
     
     <button type="submit" id="getText2Btn" class="btn btn-primary">Query from JIRA</button>
