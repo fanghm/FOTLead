@@ -152,13 +152,13 @@ def get_text2(fid):
 
 def set_text2(jira_key, text2, risk_status):
     try:
-        jira = JIRA(server = "https://jiradc.ext.net.nokia.com", basic_auth=(settings.AUTH_USERNAME, settings.AUTH_PASSWORD))
+        jira = _initJira()
         issue = jira.issue(jira_key, expand="changelog")
         update_dict = {
             JIRA_FIELD_TEXT2: text2,
             JIRA_FIELD_RISK_STATUS: {'value': risk_status}
         }
-        issue.update(update_dict)
+        issue.update(fields = update_dict)
         return {'status': 'success'}
 
     except Exception as e:

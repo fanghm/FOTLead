@@ -75,10 +75,10 @@
             {% endif %}
 
             <td style="text-align: center;">
-              {% if f.risk != 'Green' %}
-                <div style="background-color: {{ f.risk }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;" title="{{ f.risk_detail }}"></div>
+              {% if f.risk_status != 'Green' %}
+                <div style="background-color: {{ f.risk_status }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;" title="{{ f.risk_detail }}"></div>
               {% else %}
-                <div style="background-color: {{ f.risk }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;"></div>
+                <div style="background-color: {{ f.risk_status }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;"></div>
               {% endif %}
             </td>
             <td>
@@ -137,6 +137,7 @@
     <a href="https://nokia.sharepoint.com/sites/ran24r3/SitePages/24R3-Planning-Guideline.aspx" target="_blank">24R3</a>
     <a href="https://nokia.sharepoint.com/sites/ran25r1/SitePages/25R1-Planning-Guidelines.aspx" target="_blank">25R1</a>
     <a href="https://nokia.sharepoint.com/sites/ran25r2/SitePages/25R2-Planning-Guidelines.aspx" target="_blank">25R2</a>
+    <a href="https://nokia.sharepoint.com/sites/ran25r3/SitePages/25R3-Planning-Guideline.aspx" target="_blank">25R3</a>
   </div>
 {% endblock %}
 

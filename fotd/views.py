@@ -279,9 +279,9 @@ def check_exec_issue(result, current_fb):
             continue
 
         if item['End_FB'] == current_fb:
-            if item['RC_Status'] == 'Not Committed':
+            if item['FB_Committed_Status'] == 'Not Committed':
                 _add_tag(item, "not_committed")
-                _add_hint(item, "Not_committed, stretch goal reason: " + (item['Stretch_Goal_Reason'] if 'Stretch_Goal_Reason' in item else "Not set"))
+                _add_hint(item, "Not committed to current FB, stretch goal reason: " + (item['Stretch_Goal_Reason'] if 'Stretch_Goal_Reason' in item else "Not set"))
             else:
                 _add_tag(item, "duesoon")
                 _add_hint(item, "Due at current FB")
@@ -330,7 +330,11 @@ def backlog(request, fid):
     if request.GET.get('refresh') or first_query:
         jira_query = True
         print(f"{fid}: query from JIRA")
-        (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = queryJiraCaItems(fid, query_done)
+        try:
+            (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = queryJiraCaItems(fid, query_done)
+        except Exception as e:
+            messages.error(request, "Failed to access the JIRADC server, pls make sure you're connected to the Nokia Intranet.")
+            return render(request, 'fotd/error.html')
 
         changes = ''
         if not first_query:
@@ -405,17 +409,18 @@ def backlog(request, fid):
     if not jira_query:
         context['query_time'] = query.query_time
 
-    check_exec_issue(result, current_fb)
+    if not query_done:
+        check_exec_issue(result, current_fb)
 
-    try:
-        boundary = Feature.objects.get(id=fid).boundary
-        if boundary:
-            context['boundary'] = boundary
-            not_fitting_items = check_plan_fitting(result, boundary)
-            if not_fitting_items:
-                context['not_fitting_items'] = not_fitting_items
-    except Exception as e:
-        print(f"Error: {e}")
+        try:
+            boundary = Feature.objects.get(id=fid).boundary
+            if boundary:
+                context['boundary'] = boundary
+                not_fitting_items = check_plan_fitting(result, boundary)
+                if not_fitting_items:
+                    context['not_fitting_items'] = not_fitting_items
+        except Exception as e:
+            print(f"Error: {e}")
 
     context.update({
         'result': result,

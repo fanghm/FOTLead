@@ -18,15 +18,15 @@
     </div>
 
     <div class="form-group">
-      <label for="risk">Risk:</label>
-      <select class="form-control" name="risk">
-        <option value="Green" {% if feature.risk == "Green" %}selected{% endif %}>Green</option>
-        <option value="Yellow" {% if feature.risk == "Yellow" %}selected{% endif %}>Yellow</option>
-        <option value="Red" {% if feature.risk == "Red" %}selected{% endif %}>Red</option>
+      <label for="risk_status">Risk Status:</label>
+      <select class="form-control" name="risk_status">
+        <option value="Green" {% if feature.risk_status == "Green" %}selected{% endif %}>Green</option>
+        <option value="Yellow" {% if feature.risk_status == "Yellow" %}selected{% endif %}>Yellow</option>
+        <option value="Red" {% if feature.risk_status == "Red" %}selected{% endif %}>Red</option>
       </select>
     </div>
         
-    <div id="riskDetail" class="form-group" {% if feature.risk != "Yellow" and feature.risk != "Red" %}style="display: none;"{% endif %}>
+    <div id="riskDetail" class="form-group" {% if feature.risk_status != "Yellow" and feature.risk_status != "Red" %}style="display: none;"{% endif %}>
       <label for="rep_link">Risk Detail:</label>
       <input class="form-control" type="text" name="risk_detail" value="{{feature.risk_detail}}">
     </div>
@@ -144,12 +144,13 @@
         });
       });
 
-      $('select[name="risk"]').change(function() {
+      $('select[name="risk_status"]').change(function() {
         var riskValue = $(this).val();
 
         if (riskValue === "Red" || riskValue === "Yellow") {
             $('#riskDetail').css('display', 'block');
         } else {
+            $('#riskDetail').val("");
             $('#riskDetail').css('display', 'none');
         }
       });
@@ -170,7 +171,7 @@
             // update the text2 and jira key for updating
             $('#text2').val(response.text2);
             $('#text2').data('jira-key', response.jira_key);
-            $('select[name="risk"]').val(response.risk_status).change();
+            $('select[name="risk_status"]').val(response.risk_status).change();
           },
           error: function(response){
             alert('Failed to query Text2/risk:\n' + response.message);
@@ -194,7 +195,7 @@
         var data = {
             'jira_key': $('#text2').data('jira-key'),
             'text2': newText2,
-            'risk_status': $('select[name="risk"]').val(),
+            'risk_status': $('select[name="risk_status"]').val(),
             'risk_detail': $('#riskDetail').val()
           }
         $.ajax({
