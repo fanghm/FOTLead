@@ -89,7 +89,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide):
     return (result, subfeatures, fields_to_display, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining)
 
 # NOTE: the fields will be shown in the backlog table per below sequence, if not hidden
-def queryJiraCaItems(fid, query_done=False):
+def jira_get_ca_items(fid, query_done=False):
     field_dict = {
         #0: Key
         'Item_ID': 'customfield_38702',
@@ -125,11 +125,11 @@ def queryJiraCaItems(fid, query_done=False):
     return _queryJira(jql_str, field_dict, keys_to_hide)
 
 
-def get_text2(fid):
+def jira_get_text2(fid):
     try:
         jira = _initJira()
         jql_str = '''project in (FFB) AND "Feature ID" ~ ''' + fid
-        #print('get_text2 jql: ' + jql_str)
+        #print('jira_get_text2 jql: ' + jql_str)
 
         json_result = jira.search_issues(jql_str 
                 , 0 #startAt 
@@ -147,10 +147,10 @@ def get_text2(fid):
         return {'status': 'success', 'text2': text2, 'jira_key': jira_key, 'risk_status': risk_status}
 
     except Exception as e:
-        print("Error in get_text2():\n" + str(e))
+        print("Error in jira_get_text2():\n" + str(e))
         return {'status': 'error', 'message': str(e)}
 
-def set_text2(jira_key, text2, risk_status):
+def jira_set_text2(jira_key, text2, risk_status):
     try:
         jira = _initJira()
         issue = jira.issue(jira_key, expand="changelog")
@@ -162,5 +162,5 @@ def set_text2(jira_key, text2, risk_status):
         return {'status': 'success'}
 
     except Exception as e:
-        print("Error in set_text2():\n" + str(e))
+        print("Error in jira_set_text2():\n" + str(e))
         return {'status': 'error', 'message': str(e)}

@@ -6,9 +6,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery, ProgramBoundary
-from .myjira import queryJiraCaItems, get_text2, set_text2
+from .myjira import jira_get_ca_items, jira_get_text2, jira_set_text2
 from .mailer import send_email
 
 
@@ -250,7 +251,7 @@ def backlog(request, fid):
         jira_query = True
         print(f"{fid}: query from JIRA")
         try:
-            (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = queryJiraCaItems(fid, query_done)
+            (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = jira_get_ca_items(fid, query_done)
         except Exception as e:
             messages.error(request, "Failed to access the JIRADC server, pls make sure you're connected to the Nokia Intranet.")
             return render(request, 'fotd/error.html')
@@ -469,15 +470,16 @@ def ajax_send_email(request, email_type):
 
 @csrf_exempt
 def ajax_get_text2(request, fid):
-    result = get_text2(fid)
+    result = jira_get_text2(fid)
     return JsonResponse(result) if result['status'] == 'success' else JsonResponse(result, status=500)
 
 @csrf_exempt
+@require_POST
 def ajax_set_text2(request, fid):
     jira_key = request.POST.get('jira_key')
     text2 = request.POST.get('text2')
     risk_status = request.POST.get('risk_status')
-    result = set_text2(jira_key, text2, risk_status)
+    result = jira_set_text2(jira_key, text2, risk_status)
 
     if result['status'] == 'success':
         feature = Feature.objects.get(id=fid)

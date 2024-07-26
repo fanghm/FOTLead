@@ -26,9 +26,9 @@
       </select>
     </div>
         
-    <div class="form-group" {% if feature.risk_status != "Yellow" and feature.risk_status != "Red" %}style="display: none;"{% endif %}>
+    <div class="form-group" id="riskDetail" {% if feature.risk_status != "Yellow" and feature.risk_status != "Red" %}style="display: none;"{% endif %}>
       <label for="risk_detail">Risk Detail:</label>
-      <input id="riskDetail" class="form-control" type="text" name="risk_detail" value="{{feature.risk_detail}}">
+      <input id="risk_detail" class="form-control" type="text" name="risk_detail" value="{{feature.risk_detail}}">
     </div>
     
     <button type="submit" id="getText2Btn" class="btn btn-primary">Query from JIRA</button>
@@ -150,7 +150,7 @@
         if (riskValue === "Red" || riskValue === "Yellow") {
             $('#riskDetail').css('display', 'block');
         } else {
-            $('#riskDetail').val("");
+            $('#risk_detail').val("");
             $('#riskDetail').css('display', 'none');
         }
       });
@@ -196,7 +196,7 @@
             'jira_key': $('#text2').data('jira-key'),
             'text2': newText2,
             'risk_status': $('select[name="risk_status"]').val(),
-            'risk_detail': $('#riskDetail').val()
+            'risk_detail': $('#risk_detail').val()
           }
         $.ajax({
           url: '/ajax_set_text2/' + fid + '/',
