@@ -1,32 +1,27 @@
 {% extends "base.html" %}
 {% now "Y-m-d" as today %}
-
-{% block css %}
-  <style>
-    .edit-icon {
-      display: inline-block;
-      transform: rotateZ(90deg);
-    }
-    </style>
-{% endblock %}
+{% load custom_filters %}
 
 {% block content %}
-  <h1 class="text-center">{{ feature }}: {{feature.name|safe}}</h1>
+  <h1 class="text-center">[{{feature.release}}] {{ feature.id }}: {{feature.name|safe}}</h1>
   <div class="section">
     <div class="header">
       <div style="display: flex; align-items: center;">
-        <h2>Basic Info</h2>
-        <!--a href="{% url 'fotd:feature' feature.id %}"><span class="edit-icon">&#X270E;</span></a-->
-        <button id="editFeatureBtn">*</button>
+        <h2>Basic Info&nbsp;</h2>
+        <a href="{% url 'fotd:feature' feature.id %}"><img src="/static/admin/img/icon-changelink.svg" alt="edit"></a>
+        <!--button id="editFeatureBtn">*</button-->
       </div>
     </div>
 
     <div class="content">
       <ul>
-        <li><a href="{% url 'fotd:backlog' feature.id %}">Backlog</a></li>
-        <li>Release: {{ feature.release }} | Priority: {{ feature.priority }}</li>
-        <li>Applicable program boundary: {{ feature.boundary.category }}</li>
-        <li>Desc: {{ feature.desc|urlize }}</li>
+        <li>Links: <a href="{% url 'fotd:backlog' feature.id %}">Backlog</a>
+          {% if feature.phase == 'Testing' and feature.rep_link|startswith:"http" %}
+              | <a href="{{ feature.rep_link }}"  target="_blank">ReP</a>
+          {% endif %}
+        </li>
+        <!--li>Release: {{ feature.release }} | Priority: {{ feature.priority }}</li-->
+        <li>Desc / Labels: {{ feature.desc|urlize }}</li>
         <li>Text2:<br>{{ feature.text2|escape|linebreaksbr }}</li>
         </li>
       </ul>
@@ -36,7 +31,7 @@
   <div class="section">
     <div class="header">
       <div style="display: flex; align-items: center;">
-        <h2>Status Updates</h2>
+        <h2>Events</h2>
         <button class="addUpdateBtn">&#10750;</button>
       </div>
     </div>
@@ -46,13 +41,13 @@
         <form class="addStatusForm" style="margin-left: 40px;display:none;">
           {% csrf_token %}
           <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
-          <input type="text" name="status" placeholder="Add new status update" style="display: inline-block; width: 50%;">
+          <input type="text" name="status" placeholder="Add an event" style="display: inline-block; width: 50%;">
           <button type="submit" style="background-color: #007bff;">Add</button>
           <button type="button" class="cancelUpdateBtn">Cancel</button>
         </form>
 
-        {% for statusUpdate in updates %}
-          <li>{{ statusUpdate|safe|urlizetrunc:30 }}</li>
+        {% for event in updates %}
+          <li>{{event.update_date|date:'Y/m/d'}}: {{ event.update_text|safe|urlizetrunc:30 }}</li>
         {% empty %}
           <li id="feature_update_empty">No update yet</p>
         {% endfor %}
@@ -75,7 +70,7 @@
         <form class="addTaskForm" style="margin-left: 40px;display:none;">
           {% csrf_token %}
           <!--label for="title" style="display: inline-block;">New task:</label-->
-          <input type="text" name="title" placeholder="Add new task" style="display: inline-block; width: 30%;">
+          <input type="text" name="title" placeholder="Add a task" style="display: inline-block; width: 30%;">
 
           <label for="owner" style="display: inline-block;">Owner:</label>
           <input type="text" name="owner" value="FOTL" style="display: inline-block;">
@@ -107,7 +102,7 @@
               <form class="addTaskStatusForm" style="display:none;" data-task-id="{{ task.id }}">
                 {% csrf_token %}
                 <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" style="display: inline-block;" max="{{ today|date:'Y-m-d' }}">
-                <input type="text" name="status" placeholder="Add task update" style="display: inline-block; width: 50%;">
+                <input type="text" name="status" placeholder="Add a update" style="display: inline-block; width: 50%;">
                 <button type="submit">Add</button>
                 <button type="button" class="cancelTaskStatusBtn">Cancel</button>
               </form>
@@ -190,7 +185,7 @@
                + response.id + '">+</button></li>\n'
               + '<ul><form class="addTaskStatusForm" style="display:none;" data-task-id="' + response.id +'">'
               + '<input type="date" name="date" value="' + today_str + '" style="display: inline-block;" max="' + today_str + '">'
-              + '<input type="text" name="status" placeholder="Add task update" style="display: inline-block; width: 50%;">'
+              + '<input type="text" name="status" placeholder="Add a update" style="display: inline-block; width: 50%;">'
               + '<button type="submit">Add</button>'
               + '<button type="button" class="cancelTaskStatusBtn">Cancel</button>'
               + '</form> <li id="task_' + response.id +'_hidden_placeholder" style="display: none;"></li></ul>').insertAfter('#task_list_hidden_placeholder');

@@ -50,16 +50,18 @@ def ajax_task_update(request, tid):
     if request.method == 'POST':
         done = False
         task = Task.objects.get(pk=tid)
+        task.top = False
         for key, value in request.POST.items():
             if hasattr(task, key):
-                if (key == "status" and value == "Completed"):
-                    done = True
+                if (key == "status"):
+                    done = (value == "Completed")
                 elif (key == "top"):
                     value = (value == "on")
                 else:
                     pass
 
                 setattr(task, key, value)
+                #print(f'Task update: {key}: {value}')
 
         task.save()
 

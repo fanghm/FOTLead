@@ -177,8 +177,8 @@ class Task(models.Model):
     due = models.DateField()
     status = models.CharField(max_length=11, default='Ongoing', choices=TASK_STATUS)
     chat = models.CharField(max_length=50, blank=True)
-    mail = models.CharField(max_length=50, blank=True)
-    meeting = models.CharField(max_length=50, blank=True)
+    mail = models.CharField(max_length=100, blank=True)
+    meeting = models.CharField(max_length=100, blank=True)
     
     #relate_to = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
     top = models.BooleanField(default=False)    # top task will be shown in homepage

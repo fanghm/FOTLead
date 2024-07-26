@@ -165,9 +165,11 @@ doc/
 django.md
 ideas.md
 
-init/
+init/*.html
+init/*.json
+init/*.dat
+init/*.txt
 init_db.py
-*.html
-*.json
 
 temp/
+*.bat
