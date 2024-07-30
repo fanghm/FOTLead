@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Issue Detail</title>
+</head>
+<body>
+	<h1>{{ issue.title }}</h1>
+	<p>{{ issue.description }}</p>
+	<p>Type: {{ issue.get_issue_type_display }}</p>
+	<p>Status: {{ issue.get_status_display }}</p>
+	<p>Created at: {{ issue.created_at }}</p>
+	<p>Updated at: {{ issue.updated_at }}</p>
+	<a href="{% url 'issue_list' %}">Back to list</a>
+
+	<h2>Comments</h2>
+	<ul>
+		{% for comment in comments %}
+			<li>
+				<strong>{{ comment.author }}</strong> - {{ comment.created_at }}<br>
+				{{ comment.text }}
+			</li>
+		{% endfor %}
+	</ul>
+
+	<h2>Add a comment</h2>
+	<form method="post">
+		{% csrf_token %}
+		{{ comment_form.as_p }}
+		<button type="submit">Add Comment</button>
+	</form>
+</body>
+</html>

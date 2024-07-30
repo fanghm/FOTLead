@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Issue Form</title>
+</head>
+<body>
+    <h1>{% if issue.id %}Edit{% else %}Create{% endif %} Issue</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">{% if issue.id %}Update{% else %}Create{% endif %}</button>
+    </form>
+    <a href="{% url 'issue_list' %}">Back to list</a>
+</body>
+</html>

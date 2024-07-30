@@ -19,6 +19,7 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('', include('fotd.urls')),
+    path('tracker/', include('tracker.urls')),
     path('admin/', admin.site.urls),
     path('user/', include('django.contrib.auth.urls')),
 ]

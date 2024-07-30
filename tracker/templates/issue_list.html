@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Issue List</title>
+</head>
+<body>
+	<h1>Issue List</h1>
+	<ul>
+		{% for issue in issues %}
+			<li>
+				<a href="{% url 'issue_detail' issue.pk %}">{{ issue.title }}</a> - {{ issue.get_issue_type_display }} - {{ issue.get_status_display }}
+			</li>
+		{% endfor %}
+	</ul>
+</body>
+</html>
