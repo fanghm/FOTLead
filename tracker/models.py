@@ -17,7 +17,7 @@ class Issue(models.Model):
 
 	title = models.CharField(max_length=200)
 	description = models.TextField(blank=True)
-	issue_type = models.CharField(max_length=20, choices=ISSUE_TYPES)
+	type = models.CharField(max_length=20, choices=ISSUE_TYPES)
 	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)

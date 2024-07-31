@@ -6,7 +6,7 @@
 <body>
 	<h1>{{ issue.title }}</h1>
 	<p>{{ issue.description }}</p>
-	<p>Type: {{ issue.get_issue_type_display }}</p>
+	<p>Type: {{ issue.get_type_display }}</p>
 	<p>Status: {{ issue.get_status_display }}</p>
 	<p>Created at: {{ issue.created_at }}</p>
 	<p>Updated at: {{ issue.updated_at }}</p>
@@ -16,8 +16,7 @@
 	<ul>
 		{% for comment in comments %}
 			<li>
-				<strong>{{ comment.author }}</strong> - {{ comment.created_at }}<br>
-				{{ comment.text }}
+				<strong>{{ comment.text }}</strong> - {{ comment.author }}@{{ comment.created_at }}				
 			</li>
 		{% endfor %}
 	</ul>

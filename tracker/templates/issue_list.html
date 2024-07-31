@@ -5,12 +5,24 @@
 </head>
 <body>
 	<h1>Issue List</h1>
-	<ul>
-		{% for issue in issues %}
-			<li>
-				<a href="{% url 'issue_detail' issue.pk %}">{{ issue.title }}</a> - {{ issue.get_issue_type_display }} - {{ issue.get_status_display }}
-			</li>
-		{% endfor %}
-	</ul>
+	{% for issue_type, issues in grouped_issues.items %}
+		<h2>{{ issue_type }}{% if issues|length > 1 %}s{% endif %}</h2>
+		<ul>
+			{% for issue in issues %}
+				<li>
+					<a href="{% url 'issue_detail' issue.pk %}">{{ issue.title }}</a> - {{ issue.get_status_display }}
+				</li>
+			{% endfor %}
+		</ul>
+	{% endfor %}
+
+    <hr><h2>Done Items</h2>
+    <ul>
+        {% for issue in done_issues %}
+            <li>
+                {{ issue.get_type_display }} - <a href="{% url 'issue_detail' issue.pk %}">{{ issue.title }}</a>
+            </li>
+        {% endfor %}
+    </ul>
 </body>
 </html>

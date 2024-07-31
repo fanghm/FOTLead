@@ -19,15 +19,30 @@ def issue_form(request, pk=None):
     return render(request, 'issue_form.html', {'form': form, 'issue': issue})
 
 def issue_list(request):
-	issues = Issue.objects.all()
-	return render(request, 'issue_list.html', {'issues': issues})
+    issues = Issue.objects.all().order_by('type')
+    grouped_issues = {}
+    done_issues = []
+
+    for issue in issues:
+        if issue.status == 'closed':
+            done_issues.append(issue)
+        else:
+            type = issue.get_type_display()
+            if type not in grouped_issues:
+                grouped_issues[type] = []
+            grouped_issues[type].append(issue)
+    
+    return render(request, 'issue_list.html', {
+        'grouped_issues': grouped_issues,
+        'done_issues': done_issues
+        })
 
 def issue_detail(request, pk):
     issue = get_object_or_404(Issue, pk=pk)
     comments = issue.comments.all()
 
     if request.method == 'POST':
-        comment_form = CommentForm(request.POST)
+        comment_form = CommentForm(request.POST, issue=issue)
         if comment_form.is_valid():
             comment = comment_form.save(commit=False)
             comment.author = request.user.username  # use the login user
@@ -35,7 +50,7 @@ def issue_detail(request, pk):
             comment.save()
             return redirect('issue_detail', pk=issue.pk)
     else:
-        comment_form = CommentForm()
+        comment_form = CommentForm(issue=issue)
 
     return render(request, 'issue_detail.html', {
         'issue': issue,
@@ -52,3 +67,15 @@ def issue_create(request):
     else:
         form = IssueForm()
     return render(request, 'issue_form.html', {'form': form})
+
+def issue_update(request, pk):
+    issue = get_object_or_404(Issue, pk=pk)
+    if request.method == 'POST':
+        form = IssueForm(request.POST, instance=issue)
+        if form.is_valid():
+            form.save()
+            return redirect('issue_list')
+    else:
+        form = IssueForm(instance=issue)
+
+    return render(request, 'issue_form.html', {'form': form, 'issue': issue})
