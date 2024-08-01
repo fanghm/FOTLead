@@ -12,11 +12,14 @@ from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, Stat
 from .myjira import jira_get_ca_items, jira_get_text2, jira_set_text2
 from .mailer import send_email
 
+import pdb  # for debugging, use pdb.set_trace() to set breakpoints
 
 #@login_required
 def index(request):
     features = Feature.objects.exclude(phase='Done').order_by('release', 'id')
     
+    #pdb.set_trace()
+
     features_with_task_count = []
     for feature in features:
         task_count = Task.objects.filter(feature__id=feature.id).exclude(status__in=['Completed', 'Removed']).count()
@@ -108,10 +111,11 @@ def fb(request, yy):
         }
     return render(request, 'fotd/fb.html', context)
 
+# start to search in 4 continous fbs due to below exception on 7/31: current sprint not found from ['FB2413', 'FB2414', 'FB2415']
 def _get_fb_info():
     today = date.today()
     start_fb = f'FB{str(today.year)[-2:]}{today.month*2-1:02d}'
-    sprints = Sprint.objects.filter(fb__gte=start_fb).order_by('fb')[:3]
+    sprints = Sprint.objects.filter(fb__gte=start_fb).order_by('fb')[:4]
 
     for sprint in sprints:
         if (today >= sprint.start_date and today <= sprint.end_date):
