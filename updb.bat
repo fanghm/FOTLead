@@ -10,5 +10,9 @@ echo #3. apply changes to db
 python manage.py migrate
 pause
 
+echo #4. run tests
+python manage.py test fotd
+python manage.py test tracker
+
 echo # start the app
 python manage.py runserver

@@ -141,13 +141,13 @@ def jira_get_text2(fid):
 
         issue = json_result['issues'][0]
         jira_key = issue['key']
-        text2 = issue['fields'][JIRA_FIELD_TEXT2]
-        risk_status = issue['fields'][JIRA_FIELD_RISK_STATUS]['value']
+        text2 = issue['fields'][JIRA_FIELD_TEXT2] if JIRA_FIELD_TEXT2 in issue['fields'] else 'Not set'
+        risk_status = issue['fields'][JIRA_FIELD_RISK_STATUS]['value'] if JIRA_FIELD_RISK_STATUS in issue['fields'] and issue['fields'][JIRA_FIELD_RISK_STATUS] else 'Green'
         #print(f'{fid} key: {jira_key} Text2:{text2}\n')
         return {'status': 'success', 'text2': text2, 'jira_key': jira_key, 'risk_status': risk_status}
 
     except Exception as e:
-        print("Error in jira_get_text2():\n" + str(e))
+        print("Exception in jira_get_text2():\n" + str(e) + '\n' + issue)
         return {'status': 'error', 'message': str(e)}
 
 def jira_set_text2(jira_key, text2, risk_status):
@@ -162,5 +162,5 @@ def jira_set_text2(jira_key, text2, risk_status):
         return {'status': 'success'}
 
     except Exception as e:
-        print("Error in jira_set_text2():\n" + str(e))
+        print("Exception in jira_set_text2():\n" + str(e))
         return {'status': 'error', 'message': str(e)}

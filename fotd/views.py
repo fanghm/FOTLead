@@ -95,7 +95,7 @@ def ajax_feature_status(request, fid):
         logging.debug(f"date value: {update_date}, type: {type(update_date)}")
 
         update = FeatureUpdate.objects.create(feature=feature, update_date=update_date, is_key=True, update_text=update_text)
-        return HttpResponse(update)
+        return HttpResponse(f'{update.update_date.strftime("%Y/%m/%d")}: {update.update_text}')
     else:
         return HttpResponse('No POST data')
 
@@ -261,7 +261,7 @@ def backlog(request, fid):
             return render(request, 'fotd/error.html')
 
         changes = ''
-        if not first_query:
+        if not first_query and not query_done:
             if len(query.query_result) != len(result):
                 # find out new added items
                 new_added_keys = [item['Key'] for item in result if not any(item['Key'] == old_item['Key'] for old_item in query.query_result)]

@@ -169,8 +169,14 @@
         if (featureId.startsWith('CB') && !(featureId.endsWith('SR') || featureId.endsWith('CR'))) {
           featureId += '-SR';
         } else if (!isNaN(featureId)) { // if all numbers
-          featureId = featureId.padStart(6, '0');
-          featureId = 'CB' + featureId + '-SR';
+          if (featureId.length < 4) {
+            alert('Bad Feature ID!');
+          } else {
+            featureId = featureId.padStart(6, '0');
+            featureId = 'CB' + featureId + '-SR';
+          }
+        } else if (featureId.length > 11) {
+          alert('Bad Feature ID!');
         }
 
         var url;
