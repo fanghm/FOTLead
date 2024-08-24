@@ -47,7 +47,7 @@
         </form>
 
         {% for event in updates %}
-          <li>{{event.update_date|date:'Y/m/d'}}: {{ event.update_text|safe|urlizetrunc:30 }}</li>
+          <li>{{event.update_date|date:'Y/m/d'}}: {{ event.update_text|linkify }}</li>
         {% empty %}
           <li id="feature_update_empty">No update yet</p>
         {% endfor %}
@@ -109,7 +109,7 @@
               <li id="task_{{task.id}}_hidden_placeholder" style="display: none;"></li>
               {% if task.statusUpdates %}
                 {% for statusUpdate in task.statusUpdates %}
-                  <li>{{ statusUpdate|urlize }}</li>
+                  <li>{{ statusUpdate|urlize|linkify }}</li>
                 {% endfor %}
               {% endif %}
             </ul>
