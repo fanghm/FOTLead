@@ -16,6 +16,7 @@ class CommentForm(forms.ModelForm):
         required=False, 
         label='Issue Status'
     )
+
     class Meta:
         model = Comment
         fields = ['author', 'text']
@@ -32,11 +33,20 @@ class CommentForm(forms.ModelForm):
         if self.issue:
             self.fields['new_issue_status'].initial = self.issue.status
 
+    def clean(self):
+        cleaned_data = super().clean()
+        if not self.issue:
+            raise forms.ValidationError('Issue is mandatory')
+        return cleaned_data
+
     def save(self, commit=True):
         comment = super().save(commit=False)
-        if self.issue and self.cleaned_data['new_issue_status']:
-            self.issue.status = self.cleaned_data['new_issue_status']
-            self.issue.save()
+        if self.issue:
+            comment.issue = self.issue
+            if self.cleaned_data['new_issue_status']:
+                self.issue.status = self.cleaned_data['new_issue_status']
+                self.issue.save()
+
         if commit:
             comment.save()
         return comment

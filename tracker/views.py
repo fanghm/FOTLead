@@ -24,7 +24,7 @@ def issue_list(request):
     done_issues = []
 
     for issue in issues:
-        if issue.status == 'closed':
+        if issue.status == 'closed' or issue.status == 'discarded':
             done_issues.append(issue)
         else:
             type = issue.get_type_display()
