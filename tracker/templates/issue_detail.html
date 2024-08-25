@@ -10,6 +10,7 @@
 	<p>Status: {{ issue.get_status_display }}</p>
 	<p>Created at: {{ issue.created_at }}</p>
 	<p>Updated at: {{ issue.updated_at }}</p>
+	<p><a href="{% url 'tracker:issue_edit' issue.pk %}">Edit</a></p>
 
 	<h2>Comments</h2>
 	<ul>
@@ -27,6 +28,6 @@
 		<button type="submit">Add Comment</button>
 	</form>
 
-	<p></p><a href="{% url 'tracker:issue_list' %}">Back to list</a></p>
+	<p><a href="{% url 'tracker:issue_list' %}">Back to list</a></p>
 </body>
 </html>

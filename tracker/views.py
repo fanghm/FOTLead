@@ -1,4 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
+from django.views import generic
 from .models import Issue, Comment
 from .forms import IssueForm, CommentForm
 
@@ -12,30 +14,36 @@ def issue_form(request, pk=None):
         form = IssueForm(request.POST, instance=issue)
         if form.is_valid():
             form.save()
-            return redirect('issue_list')
+            return redirect(reverse("tracker:issue_list"))
     else:
         form = IssueForm(instance=issue)
 
     return render(request, 'issue_form.html', {'form': form, 'issue': issue})
 
-def issue_list(request):
-    issues = Issue.objects.all().order_by('type')
-    grouped_issues = {}
-    done_issues = []
+class IssueListView(generic.ListView):
+    model = Issue
+    template_name = 'issue_list.html'
+    context_object_name = 'issues'
+    ordering = ['type']
 
-    for issue in issues:
-        if issue.status == 'closed' or issue.status == 'discarded':
-            done_issues.append(issue)
-        else:
-            type = issue.get_type_display()
-            if type not in grouped_issues:
-                grouped_issues[type] = []
-            grouped_issues[type].append(issue)
-    
-    return render(request, 'issue_list.html', {
-        'grouped_issues': grouped_issues,
-        'done_issues': done_issues
-        })
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        issues = context['issues']
+        grouped_issues = {}
+        done_issues = []
+
+        for issue in issues:
+            if issue.status == 'closed' or issue.status == 'discarded':
+                done_issues.append(issue)
+            else:
+                type = issue.get_type_display()
+                if type not in grouped_issues:
+                    grouped_issues[type] = []
+                grouped_issues[type].append(issue)
+        
+        context['grouped_issues'] = grouped_issues
+        context['done_issues'] = done_issues
+        return context
 
 def issue_detail(request, pk):
     issue = get_object_or_404(Issue, pk=pk)
@@ -48,7 +56,7 @@ def issue_detail(request, pk):
             comment.author = request.user.username  # use the login user
             comment.issue = issue
             comment.save()
-            return redirect('issue_detail', pk=issue.pk)
+            return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))
     else:
         comment_form = CommentForm(issue=issue)
 
@@ -57,25 +65,3 @@ def issue_detail(request, pk):
         'comments': comments,
         'comment_form': comment_form
     })
-
-def issue_create(request):
-    if request.method == 'POST':
-        form = IssueForm(request.POST)
-        if form.is_valid():
-            issue = form.save()
-            return redirect('issue_detail', pk=issue.pk)
-    else:
-        form = IssueForm()
-    return render(request, 'issue_form.html', {'form': form})
-
-def issue_update(request, pk):
-    issue = get_object_or_404(Issue, pk=pk)
-    if request.method == 'POST':
-        form = IssueForm(request.POST, instance=issue)
-        if form.is_valid():
-            form.save()
-            return redirect('issue_list')
-    else:
-        form = IssueForm(instance=issue)
-
-    return render(request, 'issue_form.html', {'form': form, 'issue': issue})
