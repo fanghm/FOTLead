@@ -10,6 +10,6 @@
         {{ form.as_p }}
         <button type="submit">{% if issue.id %}Update{% else %}Create{% endif %}</button>
     </form>
-    <a href="{% url 'issue_list' %}">Back to list</a>
+    <a href="{% url 'tracker:issue_list' %}">Back to list</a>
 </body>
 </html>
