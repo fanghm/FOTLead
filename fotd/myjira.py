@@ -32,6 +32,8 @@ def _queryJira(jql_str, field_dict, keys_to_hide):
                 issue_dict[field_name] = None
             elif field_name in ('Competence_Area', 'Activity_Type', 'RC_Status', 'RC_FB', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status'):
                 issue_dict[field_name] = value['value']
+            elif field_name in ('Release'):
+                issue_dict[field_name] = value[0]['value']
             elif field_name in ('Assignee'):
                 issue_dict[field_name] = value['displayName']
                 issue_dict['Assignee_Email'] = value['emailAddress']
@@ -58,7 +60,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide):
 
         result.append(issue_dict)
 
-        # get sub-feature set
+        # get sub-feature from Item_ID like 'CB011098-SR-A-CP2_RAN_SysSpec'
         tokens = issue_dict['Item_ID'].split('-', 3)
         if len(tokens) >= 3:
             subfeatures.add(tokens[2])
@@ -66,6 +68,19 @@ def _queryJira(jql_str, field_dict, keys_to_hide):
         else:
             issue_dict['Sub_Feature'] = 'Unknown'
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
+
+        # Get EI from issue link
+        issue_dict['EI'] = None
+        if 'issuelinks' not in issue['fields']:
+            print(f"Exception: no issue links for {issue['key']}!")
+        else:
+            for link in issue['fields']['issuelinks']:
+                if 'inwardIssue' in link:
+                    if link['inwardIssue']['key'] != issue_dict['Parent_Id']:
+                        print('Exception: the inwardIssue link is for its parent')  # just to validate, no use
+                    
+                    issue_dict['EI'] = f"[{issue_dict['Release']}] {link['inwardIssue']['fields']['summary']}"
+                    print(f"SI: {issue_dict['Sub_Feature']}, EI: {issue_dict['EI']}")
 
         # statistics
         if start_earliest is None or (issue_dict['Start_FB'] and issue_dict['Start_FB'] < start_earliest):
@@ -85,11 +100,15 @@ def _queryJira(jql_str, field_dict, keys_to_hide):
         committed_ratio = int(committed_count * 100 / total_count)
 
     fields_to_display = [k for k in result[0].keys() if k not in keys_to_hide] if result else []
+    print(f"Fields to display:")
+    for index, field in enumerate(fields_to_display):
+        print(f"{index}: {field}")
 
     return (result, subfeatures, fields_to_display, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining)
 
-# NOTE: the fields will be shown in the backlog table per below sequence, if not hidden
 def jira_get_ca_items(fid, query_done=False):
+    # CAUTION:
+    # All the fields in below dictionary, if not listed in keys_to_hide, will be shown in the backlog table (per the sequence) 
     field_dict = {
         #0: Key
         'Item_ID': 'customfield_38702',
@@ -106,7 +125,8 @@ def jira_get_ca_items(fid, query_done=False):
         'RC_Status': 'customfield_38728',
 
         #9: Progress
-        #10: Sub_Feature
+        #10: SI/Sub_Feature
+        #11: EI
         
         'RC_FB': 'customfield_43490',
         'FB_Committed_Status': 'customfield_38758', #value
@@ -114,9 +134,14 @@ def jira_get_ca_items(fid, query_done=False):
         'Risk_Status': 'customfield_38754',     #value
         'Risk_Details': 'customfield_38435',
         'Logged_Effort': 'customfield_43290',
+
+        'Parent_Id': 'customfield_29791',
+        'issuelinks': 'issuelinks', # for EI info
+        'Release': 'customfield_38724', #value
     }
 
-    keys_to_hide = ['Assignee_Email', 'Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
+    keys_to_hide = ['Release', 'Parent_Id', 'issuelinks', 'Assignee_Email', 'Item_ID', 'Summary', 'FB_Committed_Status', 'Stretch_Goal_Reason', 'Risk_Status', 'Risk_Details', 'Logged_Effort', 'RC_FB']
+
     if query_done:
         jql_str = f'''("Feature ID" ~ {fid}) and issuetype = "Competence Area" AND status not in (obsolete) order by "Item ID" '''
     else:

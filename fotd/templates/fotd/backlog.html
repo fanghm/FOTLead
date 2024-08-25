@@ -176,7 +176,7 @@
                     <option value="openCampPage" data-url="http://camp.example.com">Open the CAMP page...</option>
                   </select>
                 {% else %}
-                  {{ field_value }}
+                  {{ field_value|linkify }}
                 {% endif %}
               </td>
 
@@ -304,7 +304,7 @@ $(document).ready(function() {
             buttons: [
               'pageLength',
               {
-                extend: 'spacer',                
+                extend: 'spacer',
                 style: 'bar'
               },
               {
@@ -313,9 +313,15 @@ $(document).ready(function() {
                 text: 'Group by',
                 buttons: [
                     {
-                        text: 'Sub-feature',
+                        text: 'System Item',
                         action: function (e, dt, node, config) {
                           _group_by(dt, 10);
+                        }
+                    },
+                    {
+                        text: 'Entity Item',
+                        action: function (e, dt, node, config) {
+                          _group_by(dt, 11);
                         }
                     },
                     {
@@ -397,6 +403,7 @@ $(document).ready(function() {
                             
                           dt.column(9).visible(false); // hide progress column
                           dt.column(10).visible(false); // hide sub-feature column
+                          dt.column(11).visible(false); // hide EI column
                           this.active(!this.active());
                         }
                     },
@@ -407,7 +414,11 @@ $(document).ready(function() {
     },
     "columnDefs": [
       {
-        target: 10,  // hide the Sub_Feature column, required for grouping by sub-features
+        target: 10,  // hide the Sub_Feature column, required for row grouping by sub-features
+        visible: false
+      },
+      {
+        target: 11,  // hide the EI column, required for row grouping by EI
         visible: false
       },
 
