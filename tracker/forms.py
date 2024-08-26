@@ -11,6 +11,8 @@ class IssueForm(forms.ModelForm):
         }
 
 class CommentForm(forms.ModelForm):
+    # add a new field to update issue status
+    # all fields defined within form will be added to self.fields automatically
     new_issue_status = forms.ChoiceField(
         choices=Issue.STATUS_CHOICES, 
         required=False, 
@@ -49,4 +51,5 @@ class CommentForm(forms.ModelForm):
 
         if commit:
             comment.save()
+
         return comment

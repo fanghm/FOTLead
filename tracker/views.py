@@ -4,6 +4,7 @@ from django.views import generic
 from .models import Issue, Comment
 from .forms import IssueForm, CommentForm
 
+# show issue form to create or update issue
 def issue_form(request, pk=None):
     if pk:
         issue = get_object_or_404(Issue, pk=pk)
@@ -20,6 +21,7 @@ def issue_form(request, pk=None):
 
     return render(request, 'issue_form.html', {'form': form, 'issue': issue})
 
+# show issue list grouped by type, and done issues
 class IssueListView(generic.ListView):
     model = Issue
     template_name = 'issue_list.html'
@@ -45,6 +47,7 @@ class IssueListView(generic.ListView):
         context['done_issues'] = done_issues
         return context
 
+# show issue detail, related comments and a new form to add comment and update issue status
 def issue_detail(request, pk):
     issue = get_object_or_404(Issue, pk=pk)
     comments = issue.comments.all()
