@@ -50,11 +50,12 @@
           <th data-resizable-column-id="name">Feature Name</th>
           <th data-resizable-column-id="customer">Customer</th>
           <th data-resizable-column-id="priority">Priority</th>
-          <th data-resizable-column-id="milestone">Milestone</th>
+          <!--th data-resizable-column-id="milestone">Milestone</th-->
           <th data-resizable-column-id="phase">Phase</th>
           <th data-resizable-column-id="risk">Risk</th>
           <th data-resizable-column-id="links">Links</th>
           <th data-resizable-column-id="action">Actions</th>
+          <th data-resizable-column-id="action">Text2 Date</th>
         </tr>
       </thead>
       <tbody>
@@ -66,7 +67,7 @@
             <td>{{ f.name|safe }}</td>
             <td>{{ f.customer }}</td>
             <td>{{ f.priority|floatformat:"0g" }}</td>
-            <td>{{ f.milestone }}</td>
+            <!--td>{{ f.milestone }}</td-->
 
             {% if f.phase == 'Testing' and f.rep_link|startswith:"http" %}
               <td><a href="{{ f.rep_link }}"  target="_blank">{{ f.phase }}</a></td>
@@ -76,7 +77,7 @@
 
             <td style="text-align: center;">
               {% if f.risk_status != 'Green' %}
-                <div style="background-color: {{ f.risk_status }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;" title="{{ f.risk_detail }}"></div>
+                <div style="background-color: {{ f.risk_status }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;" title="{{ f.risk_summary }}"></div>
               {% else %}
                 <div style="background-color: {{ f.risk_status }}; width: 32px; height: 32px; border-radius: 50%; display: inline-block;"></div>
               {% endif %}
@@ -101,6 +102,7 @@
                 <a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a>
               {% endif %}
             </td>
+            <td>{{ f.text2_date|date:'m/d' }}</td>
           </tr>
         {% empty %}
           <tr>

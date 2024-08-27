@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from datetime import date, datetime, timedelta
 from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
@@ -7,6 +8,7 @@ from django.http import HttpResponse, HttpResponseRedirect, FileResponse, JsonRe
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.contrib import messages
 
 from .models import Feature, FeatureUpdate, FeatureRoles, TeamMember, Task, StatusUpdate, Link, Sprint, BacklogQuery, ProgramBoundary
 from .myjira import jira_get_ca_items, jira_get_text2, jira_set_text2
@@ -257,7 +259,11 @@ def backlog(request, fid):
         try:
             (result, subfeatures, display_fields, start_earliest, end_latest, rfc_ratio, committed_ratio, total_spent, total_remaining) = jira_get_ca_items(fid, query_done)
         except Exception as e:
-            messages.error(request, "Failed to access the JIRADC server, pls make sure you're connected to the Nokia Intranet.")
+            print(f"Failed to make the JIRA query: {traceback.format_exc()}")
+            # Django message framework will add the message to the context, needless to pass it explicitly
+            # TODO: report the issue automatically via REST interface
+            error_message = f"Failed to query from JIRA server, pls report the issue.<br>For timeout issue, please make sure you're connected to the Nokia Intranet."
+            messages.error(request, error_message)
             return render(request, 'fotd/error.html')
 
         changes = ''
@@ -481,15 +487,16 @@ def ajax_get_text2(request, fid):
 @require_POST
 def ajax_set_text2(request, fid):
     jira_key = request.POST.get('jira_key')
-    text2 = request.POST.get('text2')
+    text2_desc = request.POST.get('text2_desc')
     risk_status = request.POST.get('risk_status')
-    result = jira_set_text2(jira_key, text2, risk_status)
+    result = jira_set_text2(jira_key, text2_desc, risk_status)
 
     if result['status'] == 'success':
         feature = Feature.objects.get(id=fid)
-        feature.text2 = text2
+        feature.text2_desc = text2_desc
+        feature.text2_date = date.today()
         feature.risk_status = risk_status
-        feature.risk_detail = request.POST.get('risk_detail')
+        feature.risk_summary = request.POST.get('risk_summary')
         feature.save()
         return JsonResponse(result)
     else:

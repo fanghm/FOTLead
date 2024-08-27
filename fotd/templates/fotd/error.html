@@ -2,9 +2,10 @@
 
 {% block content %}
 {% if messages %}
+<h2>FOTL, we met a problem...</h2>
 <ul class="messages">
     {% for message in messages %}
-    <li class="{{ message.tags }}">{{ message }}</li>
+    <li class="{{ message.tags }}">{{ message|safe }}</li>
     {% endfor %}
 </ul>
 {% endif %}

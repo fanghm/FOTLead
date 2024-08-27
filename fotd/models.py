@@ -101,8 +101,8 @@ class Feature(models.Model):
     name = models.CharField(max_length=100)
 
     release = models.CharField(max_length=20)    #LLF/e-LLF has multiple releases
-    priority = models.IntegerField(validators=[MaxValueValidator(99999)])
-    milestone = models.CharField(max_length=7, choices=MILESTONE_CHOICES)
+    priority = models.IntegerField(blank=True, validators=[MaxValueValidator(99999)])
+    milestone = models.CharField(blank=True, max_length=7, choices=MILESTONE_CHOICES)
     boundary = models.ForeignKey(ProgramBoundary, on_delete=models.PROTECT, blank=True, null=True)
 
     #labels = models.CharField(max_length=100)  #Test_Heavy, LeadTribe_xxx, etc.
@@ -110,15 +110,17 @@ class Feature(models.Model):
     customer = models.CharField(max_length=100, blank=True)
 
     # links
-    fusion_link = models.CharField(max_length=300, verbose_name='JIRA Structure', help_text='Link to the JIRA Structure')
+    fusion_link = models.CharField(max_length=300, blank=True, verbose_name='JIRA Structure', help_text='Link to the JIRA Structure')
     fp_link = models.CharField(max_length=100, blank=True, verbose_name='FP Link', help_text='Link to the FP')
     cfam_link = models.CharField(max_length=100, blank=True, verbose_name='CFAM Link', help_text='Link to the CFAM')
     gantt_link = models.CharField(max_length=100, blank=True, verbose_name='Gantt Chart', help_text='Link to the Gantt Chart')
     rep_link = models.CharField(max_length=100, blank=True, verbose_name='Reporting Portal', help_text='Link to the Reporting Portal')
     
     risk_status = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
-    risk_detail = models.CharField(max_length=50, blank=True)
-    text2 = models.CharField(max_length=512, blank=True)
+    risk_summary = models.CharField(max_length=50, blank=True)
+    text2_desc = models.CharField(max_length=512, blank=True)
+    text2_date = models.DateField(default=datetime.date.today)
+
     desc = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -235,4 +237,7 @@ class BacklogQuery(models.Model):
     class Meta:
         ordering = ['-query_time']
         verbose_name_plural = "Backlog Queries"
+
+    def __str__(self):
+        return f'{self.feature_id} | {self.query_time.strftime("%m/%d %H:%M")}'
 

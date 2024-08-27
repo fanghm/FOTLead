@@ -13,8 +13,8 @@
     {% csrf_token %}
 
     <div class="form-group">
-      <label for="text2">Text2:</label>
-      <textarea id="text2" data-jira-key="" class="form-control" name="text2" rows="5">{{feature.text2}}</textarea>
+      <label for="text2_desc">Text2:</label>
+      <textarea id="text2_desc" data-jira-key="" class="form-control" name="text2_desc" rows="5">{{feature.text2_desc}}</textarea>
     </div>
 
     <div class="form-group">
@@ -27,8 +27,8 @@
     </div>
         
     <div class="form-group" id="riskDetail" {% if feature.risk_status != "Yellow" and feature.risk_status != "Red" %}style="display: none;"{% endif %}>
-      <label for="risk_detail">Risk Detail:</label>
-      <input id="risk_detail" class="form-control" type="text" name="risk_detail" value="{{feature.risk_detail}}">
+      <label for="risk_summary">Risk Summary:</label>
+      <input id="risk_summary" class="form-control" type="text" name="risk_summary" value="{{feature.risk_summary}}">
     </div>
     
     <button type="submit" id="getText2Btn" class="btn btn-primary">Query from JIRA</button>
@@ -150,7 +150,7 @@
         if (riskValue === "Red" || riskValue === "Yellow") {
             $('#riskDetail').css('display', 'block');
         } else {
-            $('#risk_detail').val("");
+            $('#risk_summary').val("");
             $('#riskDetail').css('display', 'none');
         }
       });
@@ -162,15 +162,15 @@
   
         $.ajax({
           url: '/ajax_get_text2/' + fid + '/',
-          type: 'POST',
+          type: 'GET',
           success: function(response){
-            //alert(response.text2);
-            var lines = response.text2.split("\n").length;
-            $('#text2').attr('rows', lines+2);
+            //alert(response.text2_desc);
+            var lines = response.text2_desc.split("\n").length;
+            $('#text2_desc').attr('rows', lines+2);
 
-            // update the text2 and jira key for updating
-            $('#text2').val(response.text2);
-            $('#text2').data('jira-key', response.jira_key);
+            // update the text2_desc and jira key for updating
+            $('#text2_desc').val(response.text2_desc);
+            $('#text2_desc').data('jira-key', response.jira_key);
             $('select[name="risk_status"]').val(response.risk_status).change();
           },
           error: function(response){
@@ -182,28 +182,28 @@
       $('#setText2Btn').click(function(event){
         event.preventDefault();
         var fid = $("#text2_form").data('feature-id');
-        var text2 = $('#text2').val();
+        var text2_desc = $('#text2_desc').val();
 
         var today = new Date();
         var today_str = '[' + today.getFullYear().toString().slice(-2) + '.' + (today.getMonth() + 1) + '.' + today.getDate() + ']';
         
         // update the date str [yy.mm.dd] to today
         var regex = /\[\d{2}\.\d{1,2}\.\d{1,2}\]/;
-        var newText2 = text2.replace(regex, today_str);
+        var newText2 = text2_desc.replace(regex, today_str);
         //alert(newText2)
 
         var data = {
-            'jira_key': $('#text2').data('jira-key'),
-            'text2': newText2,
+            'jira_key': $('#text2_desc').data('jira-key'),
+            'text2_desc': newText2,
             'risk_status': $('select[name="risk_status"]').val(),
-            'risk_detail': $('#risk_detail').val()
+            'risk_summary': $('#risk_summary').val()
           }
         $.ajax({
           url: '/ajax_set_text2/' + fid + '/',
           type: 'POST',
           data: data,
           success: function(response){
-            $('#text2').val(newText2);
+            $('#text2_desc').val(newText2);
             alert('Text2 and risk updated successfully!');
           },
           error: function(response){
