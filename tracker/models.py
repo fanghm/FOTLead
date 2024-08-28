@@ -1,4 +1,5 @@
 from django.db import models
+from django.urls import reverse
 
 class Issue(models.Model):
 	ISSUE_TYPES = [
@@ -27,6 +28,10 @@ class Issue(models.Model):
 
 	def __str__(self):
 		return self.title
+
+	# Needless to provide a success_url for CreateView or UpdateView that will use get_absolute_url() on the model object if available
+	def get_absolute_url(self):
+		return reverse("tracker:issue_detail", kwargs={"pk": self.pk})
 
 class Comment(models.Model):
 	issue = models.ForeignKey(Issue, related_name='comments', on_delete=models.CASCADE)

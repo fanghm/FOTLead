@@ -1,7 +1,9 @@
-from django.test import TestCase, Client
+from datetime import timedelta
+from django.utils import timezone
 from django.urls import reverse
-from tracker.models import Issue, Comment
+from django.test import TestCase, Client
 from django.contrib.auth.models import User
+from tracker.models import Issue, Comment
 from tracker.forms import IssueForm, CommentForm
 
 class IssueFormViewTests(TestCase):
@@ -33,7 +35,10 @@ class IssueFormViewTests(TestCase):
         if response.status_code != 302:
             print(response.content)
 
+        # check the redirect url
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('tracker:issue_detail', args=[self.issue.pk]))
+
         self.issue.refresh_from_db()
         self.assertEqual(self.issue.title, 'Updated Issue')
         self.assertEqual(self.issue.description, 'Updated Description')
@@ -43,19 +48,32 @@ class IssueListViewTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.issue1 = Issue.objects.create(title="Issue 1", description="Description 1", type="bug")
-        self.issue2 = Issue.objects.create(title="Issue 2", description="Description 2", type="feature", status="closed")
-        self.issue1 = Issue.objects.create(title="Issue 3", description="Description 1", type="idea")
-        self.issue2 = Issue.objects.create(title="Issue 4", description="Description 2", type="idea", status="discarded")
-        self.issue1 = Issue.objects.create(title="Issue 3", description="Description 1", type="improvement")
+        self.issue2 = Issue.objects.create(title="Issue 2", description="done earlier", type="feature", status="closed", 
+            updated_at=timezone.now()-timedelta(days=50)) # updated_at cannot be set
+
+        self.issue3 = Issue.objects.create(title="Issue 3", description="Description 1", type="idea")
+        self.issue4 = Issue.objects.create(title="Issue 4", description="Description 2", type="idea", status="discarded")
+        self.issue5 = Issue.objects.create(title="Issue 5", description="Description 1", type="improvement")
+        self.issue6 = Issue.objects.create(title="Issue 6", description="Description 2", type="feature")
+        self.issue7 = Issue.objects.create(title="Issue 7", description="Description 1", type="bug")
 
     def test_issue_list_view(self):
         response = self.client.get(reverse('tracker:issue_list'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'issue_list.html')
-        self.assertIn('grouped_issues', response.context)
-        self.assertIn('done_issues', response.context)
-        self.assertEqual(len(response.context['grouped_issues']), 3)
-        self.assertEqual(len(response.context['done_issues']), 2)
+        self.assertIn('grouped_open_issues', response.context)
+        self.assertIn('grouped_closed_issues', response.context)
+
+        #print(response.context['grouped_open_issues'])
+        total_open_issues = sum(len(issues) for issues in response.context['grouped_open_issues'].values())
+        self.assertEqual(total_open_issues, 5)
+        self.assertEqual(len(response.context['grouped_open_issues']), 4)   # type of issues
+
+        total_closed_issues = sum(len(issues) for issues in response.context['grouped_closed_issues'].values())
+        #print(f"Total closed issues: {total_closed_issues}")
+        #print(response.context['grouped_closed_issues'])        
+        self.assertEqual(len(response.context['grouped_closed_issues']), 3)   # group of issues
+        self.assertEqual(total_closed_issues, 2)    # number of closed issues
 
 class IssueDetailViewTests(TestCase):
     def setUp(self):
@@ -84,7 +102,7 @@ class IssueDetailViewTests(TestCase):
         self.assertEqual(Comment.objects.count(), 2)
         new_comment = Comment.objects.latest('created_at')
 
-        print(f'Comment: {new_comment.text} by {new_comment.author}')
+        #print(f'Comment: {new_comment.text} by {new_comment.author}')
         self.assertEqual(new_comment.text, data['text'])
         self.assertEqual(new_comment.issue, self.issue)
         self.assertEqual(new_comment.author, 'testuser')

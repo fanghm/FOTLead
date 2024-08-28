@@ -2,10 +2,19 @@
 <html>
 <head>
 	<title>Issue List</title>
+    <style>
+        .divider {
+            border-bottom: 2px solid #ccc;
+            margin: 20px 0;
+			width: 40%;
+        }
+    </style>
 </head>
 <body>
-	<h1>Issue List</h1>
-	{% for issue_type, issues in grouped_issues.items %}
+	<h1>Tracker</h1>
+    <div class="divider"></div>
+
+	{% for issue_type, issues in grouped_open_issues.items %}
 		<h2>{{ issue_type }}{% if issues|length > 1 %}s{% endif %}</h2>
 		<ul>
 			{% for issue in issues %}
@@ -16,13 +25,25 @@
 		</ul>
 	{% endfor %}
 
-    <hr><h2>Done Items</h2>
-    <ul>
-        {% for issue in done_issues %}
-            <li>
+    <div class="divider"></div>
+	<h2>Closed</h2>
+    {% for time_group, issues in grouped_closed_issues.items %}
+		<ul><h3>{{ time_group|capfirst }}</h3>
+        <ul>
+			{% for issue in issues %}
+        	<li>
                 {{ issue.get_type_display }} - <a href="{% url 'tracker:issue_detail' issue.pk %}">{{ issue.title }}</a>
+				{% if issue.status == 'discarded' %}
+					({{ issue.get_status_display }})
+				{% endif %}
             </li>
-        {% endfor %}
-    </ul>
+			{% endfor %}
+		</ul></ul>
+    {% endfor %}
+
+	<div class="divider"></div>
+	<footer class="center">
+	  <p>&copy; 2024 <a href="{% url 'tracker:issue_create' %}">Tracker</a></p>
+	</footer>
 </body>
 </html>
