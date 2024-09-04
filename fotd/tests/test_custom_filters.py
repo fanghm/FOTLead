@@ -45,15 +45,23 @@ class LinkifyTests(TestCase):
         self.assertIsInstance(result, SafeString)
         self.assertEqual(result, expected_output)
 
-    def test_linkify_normal_name(self):
-        input_text = "Waiting feedback from Wei-William Lee (NSB)."
-        expected_output = (
-            'Waiting feedback from '
-            '<a href="#copy-to-clipboard" onclick="navigator.clipboard.writeText(\'Wei-William Lee (NSB)\'); alert(\'Name copied: Wei-William Lee (NSB)\'); return false;">Wei-William Lee (NSB)</a>.'
-        )
-        result = custom_filters.linkify(input_text)
-        self.assertIsInstance(result, SafeString)
-        self.assertEqual(result, expected_output)
+    def test_linkify_names(self):
+        test_names = {
+            "regular_name": "Wei-William Lee (NSB)",
+            "name_with_number": "Hua 77. Zhao (NSB)",
+            "name_with_middle_name": "Mask M. Mike (Nokia)",
+        }
+    
+        for name_type, name in test_names.items():
+            with self.subTest(test_name=f'test_linkify_{name_type}'):
+                input_text = f"Contact: {name}."
+                expected_output = (
+                    'Contact: '
+                    f'<a href="#copy-to-clipboard" onclick="navigator.clipboard.writeText(\'{name}\'); alert(\'Name copied: {name}\'); return false;">{name}</a>.'
+                )
+                result = custom_filters.linkify(input_text)
+                self.assertIsInstance(result, SafeString)
+                self.assertEqual(result, expected_output)
 
     def test_linkify_normal_name_and_feature_id(self):
         input_text = "Waiting feedback from CB9999 FOTL Frankson Smith (Nokia)"
@@ -65,30 +73,16 @@ class LinkifyTests(TestCase):
         self.assertIsInstance(result, SafeString)
         self.assertEqual(result, expected_output)
 
-    def test_linkify_name_with_middle_name(self):
-        input_text = "Contact: Mask M. Mike (Nokia)."
-        expected_output = (
-            'Contact: '
-            '<a href="#copy-to-clipboard" onclick="navigator.clipboard.writeText(\'Mask M. Mike (Nokia)\'); alert(\'Name copied: Mask M. Mike (Nokia)\'); return false;">Mask M. Mike (Nokia)</a>.'
-        )
-        result = custom_filters.linkify(input_text)
-        self.assertIsInstance(result, SafeString)
-        self.assertEqual(result, expected_output)
-
-    def test_linkify_name_with_number(self):
-        input_text = "Contact: Hua 77. Zhao (NSB)."
-        expected_output = (
-            'Contact: '
-            '<a href="#copy-to-clipboard" onclick="navigator.clipboard.writeText(\'Hua 77. Zhao (NSB)\'); alert(\'Name copied: Hua 77. Zhao (NSB)\'); return false;">Hua 77. Zhao (NSB)</a>.'
-        )
-        result = custom_filters.linkify(input_text)
-        self.assertIsInstance(result, SafeString)
-        self.assertEqual(result, expected_output)
-
     def test_linkify_short_url(self):
         self.assertEqual(
             custom_filters.linkify('This is a short URL: https://example.com/short.'),
             mark_safe('This is a short URL: <a href="https://example.com/short" target="_blank">https://example.com/short</a>.')
+        )
+
+    def test_linkify_short_url2(self):
+        self.assertEqual(
+            custom_filters.linkify('Combined PGO knife is ready at: https://es-si-s3-z2.eecloud.nsn-net.net/knife-results/1231165/s3_packages_list.html'),
+            mark_safe('Combined PGO knife is ready at: <a href="https://es-si-s3-z2.eecloud.nsn-net.net/knife-results/1231165/s3_packages_list.html" target="_blank">https://es-si-s3-z2.eecloud.nsn-net.net/knife-results/1231165/s3_packages_list.html</a>')
         )
 
     def test_linkify_short_url_with_feature_id(self):
