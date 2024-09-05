@@ -38,7 +38,7 @@ link_patterns = {
 
 # pattern to match normal URL and also a truncated URL with '...' in the middle
 url_pattern = re.compile(r'https?://[^\s.]+(?:\.[^\s.]+)*(?:/[^\s]*)?(?:\.\.\.[^\s]*)?')
-#url_pattern = re.compile(r'https?://[^\s.]+(?:\.[^\s.]+)*(?:/[^\s</>"]*)?(?:\.\.\.[^\s</>"]*)?')
+#url_pattern = re.compile(r'((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w\-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)')
 
 # Convert a plain text into html for matching patterns as defined in link_patterns and url_pattern
 # For long URL, it'll be truncated as the anchor text
@@ -68,7 +68,7 @@ def linkify(str):
 
     # First, handle URLs and replace them with truncated links
     urlized_str = url_pattern.sub(lambda match: f'<a href="{match.group(0)}" target="_blank">{truncate_long_url(match)}</a>', str)
-    print(f'urlized_str: {urlized_str}')
+    #print(f'urlized_str: {urlized_str}')
 
     # Then, handle PR/feature numbers or names, but skip already processed URLs
     def replace_non_url(match):

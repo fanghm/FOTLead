@@ -82,7 +82,7 @@ class LinkifyTests(TestCase):
     def test_linkify_short_url2(self):
         self.assertEqual(
             custom_filters.linkify('Combined PGO knife is ready at: https://es-si-s3-z2.eecloud.nsn-net.net/knife-results/1231165/s3_packages_list.html'),
-            mark_safe('Combined PGO knife is ready at: <a href="https://es-si-s3-z2.eecloud.nsn-net.net/knife-results/1231165/s3_packages_list.html" target="_blank">https://es-si-s3-z2.eecloud.nsn-net.net/knife-results/1231165/s3_packages_list.html</a>')
+            mark_safe('Combined PGO knife is ready at: <a href="https://es-si-s3-z2.eecloud.nsn-net.net/knife-results/1231165/s3_packages_list.html" target="_blank">https://es-si-s3-z2....3_packages_list.html</a>')
         )
 
     def test_linkify_short_url_with_feature_id(self):
