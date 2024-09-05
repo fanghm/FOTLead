@@ -19,7 +19,14 @@
 		<ul>
 			{% for issue in issues %}
 				<li>
-					<a href="{% url 'tracker:issue_detail' issue.pk %}">{{ issue.title }}</a> - {{ issue.get_status_display }}
+					<a href="{% url 'tracker:issue_detail' issue.pk %}">
+						{{ issue.title }}
+					</a> - 
+					{% if issue.status == 'in_progress' %}
+						<strong style="color: red;">{{ issue.get_status_display }}</strong>
+					{% else %}
+						{{ issue.get_status_display }}
+					{% endif %}
 				</li>
 			{% endfor %}
 		</ul>
@@ -37,6 +44,8 @@
 					({{ issue.get_status_display }})
 				{% endif %}
             </li>
+			{% empty %}
+				<li>None :(</li>
 			{% endfor %}
 		</ul></ul>
     {% endfor %}
