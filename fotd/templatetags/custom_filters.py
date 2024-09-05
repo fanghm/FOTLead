@@ -1,6 +1,8 @@
 import re
+import datetime
 from django import template
 from django.utils.safestring import mark_safe
+from django.utils.timesince import timesince
 
 register = template.Library()
 
@@ -23,6 +25,20 @@ def keyvalue(dict, key):
 @register.filter
 def get_previous_end_fb(endfb_changed_items, key):
     return endfb_changed_items.get(key, {}).get('previous', 'blank') if endfb_changed_items else 'blank'
+
+@register.filter
+def roughtime_since(value):
+    if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
+        value = datetime.datetime.combine(value, datetime.datetime.min.time())
+    elif not isinstance(value, datetime.datetime):
+        print(f'Not a datetime: {value}, it is of type {type(value)}')
+        return value
+
+    time_diff = timesince(value)
+    #print(f'time_diff: {time_diff} ->{time_diff.split(",")[0]}')
+
+    # only keep the first time unit (day, week etc.) and remove the rest
+    return time_diff.split(',')[0]
 
 # Convert a plain text into html for matching patterns
 # Long URL will be truncated to use as the anchor text
@@ -60,7 +76,7 @@ def linkify(str):
         
     def linkify_per_patterns(match):
         if url_pattern.search(match.group(0)):
-            print(f'Matched URL: {match.group(0)}')
+            #print(f'Matched URL: {match.group(0)}')
             return match.group(0)  # Skip if it's a URL (or a truncated URL) to avoid further transformation
 
         return linkify_matches(match)

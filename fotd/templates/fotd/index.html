@@ -55,7 +55,7 @@
           <th data-resizable-column-id="risk">Risk</th>
           <th data-resizable-column-id="links">Links</th>
           <th data-resizable-column-id="action">Actions</th>
-          <th data-resizable-column-id="action">Text2 Date</th>
+          <th data-resizable-column-id="action">Text2 Updated</th>
         </tr>
       </thead>
       <tbody>
@@ -102,7 +102,7 @@
                 <a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a>
               {% endif %}
             </td>
-            <td>{{ f.text2_date|date:'m/d' }}</td>
+            <td>{{ f.text2_date | roughtime_since }} ago</td>
           </tr>
         {% empty %}
           <tr>

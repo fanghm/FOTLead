@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta
 from django.test import TestCase
 from django.utils.safestring import SafeString, mark_safe
+from django.utils.timesince import timesince
 from fotd.templatetags import custom_filters
 
 class CustomFiltersTest(TestCase):
@@ -18,6 +20,37 @@ class CustomFiltersTest(TestCase):
 		endfb_changed_items = {'item1': {'previous': 'value1'}}
 		self.assertEqual(custom_filters.get_previous_end_fb(endfb_changed_items, 'item1'), 'value1')
 		self.assertEqual(custom_filters.get_previous_end_fb(endfb_changed_items, 'item2'), 'blank')
+
+class RoughTimeSinceTests(TestCase):
+    def _normalize_time_string(self, time_string):
+        return time_string.replace('\xa0', ' ') # replace non-breaking space '\xa0' with regular space
+
+    def test_roughtime_since_days(self):
+        now = datetime.now()
+        three_days_ago = now - timedelta(days=3)
+        result = self._normalize_time_string(custom_filters.roughtime_since(three_days_ago))
+        self.assertEqual(result, '3 days')
+
+    def test_roughtime_since_weeks(self):
+        now = datetime.now()
+        two_weeks_ago = now - timedelta(weeks=2)
+        result = self._normalize_time_string(custom_filters.roughtime_since(two_weeks_ago))
+        self.assertEqual(result, '2 weeks')
+
+    def test_roughtime_since_months(self):
+        now = datetime.now()
+        two_months_ago = now - timedelta(days=70)   # 60 days -> 1 month, 4 weeks
+        result = self._normalize_time_string(custom_filters.roughtime_since(two_months_ago))
+        self.assertTrue('2 months' in result)
+
+    def test_roughtime_since_years(self):
+        now = datetime.now()
+        one_year_ago = now - timedelta(days=385)    # 365 days -> 11 months, 4 weeks
+        result = self._normalize_time_string(custom_filters.roughtime_since(one_year_ago))
+        self.assertTrue('1 year' in result)
+
+    def test_roughtime_since_invalid_type(self):
+        self.assertEqual(custom_filters.roughtime_since("not a datetime"), "not a datetime")
 
 class LinkifyTests(TestCase):
     def test_linkify_pr(self):
