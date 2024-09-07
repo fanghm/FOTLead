@@ -1,5 +1,8 @@
 from jira import JIRA
+import urllib.parse
+from datetime import timedelta
 from django.conf import settings
+from .globals import _get_fb_start_date, _get_fb_end_date
 
 JIRA_FIELD_TEXT2 = 'customfield_38727'
 JIRA_FIELD_RISK_STATUS = 'customfield_38754'
@@ -7,6 +10,19 @@ JIRA_FIELD_RISK_STATUS = 'customfield_38754'
 def _initJira():
     return JIRA(server = "https://jiradc.ext.net.nokia.com", basic_auth=(settings.AUTH_USERNAME, settings.AUTH_PASSWORD))
 
+def _get_rep_link(epics, start, end):
+    q = {
+        'period': 'week', 
+        'target_curve': 'Execution Phase Curve',
+        'features__featurelavalamp__jira_id':  ','.join(f'"{epic}"' for epic in epics),
+        'ft': f"{ (_get_fb_start_date(start) - timedelta(days=14)).strftime('%Y-%m-%d')},{_get_fb_end_date(end).strftime('%Y-%m-%d')}"
+    }
+
+    safe_str = urllib.parse.urlencode(q)
+    #print(f"ReP query string: {q}\n{safe_str}")
+
+    return f'<a href="https://rep-portal.ext.net.nokia.com/charts/tep/?{safe_str}" target="_blank">ReP</a>'
+    
 # TODO: for items with secondary links, get the actual logged effort and progress info
 def _queryJira(jql_str, field_dict, keys_to_hide):
     jira = _initJira()
@@ -70,17 +86,27 @@ def _queryJira(jql_str, field_dict, keys_to_hide):
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
 
         # Get EI from issue link
-        issue_dict['EI'] = None
+        epics = []
+        is_ST = issue_dict['Activity_Type'] == 'System Testing'
+        issue_dict['EI'] = issue_dict['ReP'] = None
         if 'issuelinks' not in issue['fields']:
             print(f"Exception: no issue links for {issue['key']}!")
         else:
             for link in issue['fields']['issuelinks']:
-                if 'inwardIssue' in link:
-                    if link['inwardIssue']['key'] != issue_dict['Parent_Id']:
-                        print('Exception: the inwardIssue link is for its parent')  # just to validate, no use
+                if 'inwardIssue' in link:   # parent
+                    if link['inwardIssue']['key'] != issue_dict['Parent_Id']:   # just to check exceptional links
+                        print(f"Exception: the {issue['key']}'s inwardIssue link {link['inwardIssue']['key']} is not for its parent {issue_dict['Parent_Id']}")
                     
                     issue_dict['EI'] = f"[{issue_dict['Release']}] {link['inwardIssue']['fields']['summary']}"
-                    print(f"SI: {issue_dict['Sub_Feature']}, EI: {issue_dict['EI']}")
+                    #print(f"SI: {issue_dict['Sub_Feature']}, EI: {issue_dict['EI']}")
+
+                elif is_ST and 'outwardIssue' in link and link['outwardIssue']['fields']['status']['name'] != 'Obsolete':  # child
+                    #link['outwardIssue']['fields']['issuetype']['name'] == 'Epic'
+                    print(f"Found ST {link['outwardIssue']['fields']['issuetype']['name']} child: {link['outwardIssue']['key']}")
+                    epics.append(link['outwardIssue']['key'])
+
+        if is_ST and len(epics) > 0:
+            issue_dict['ReP'] = _get_rep_link(epics, issue_dict['Start_FB'] , issue_dict['End_FB'])
 
         # statistics
         if start_earliest is None or (issue_dict['Start_FB'] and issue_dict['Start_FB'] < start_earliest):
@@ -127,6 +153,7 @@ def jira_get_ca_items(fid, query_done=False):
         #9: Progress
         #10: SI/Sub_Feature
         #11: EI
+        #12: ReP
         
         'RC_FB': 'customfield_43490',
         'FB_Committed_Status': 'customfield_38758', #value

@@ -181,7 +181,7 @@
               </td>
 
             {% else %}
-              <td class="no-wrap">{% if field_value %}{{ field_value }}{% endif %}</td>
+              <td class="no-wrap">{% if field_value %}{{ field_value|safe }}{% endif %}</td>
             {% endif %}
           {% endfor %}
 
@@ -296,6 +296,7 @@ $(document).ready(function() {
     //"stateSave": true,
     "scrollX": true,
     "sScrollXInner": "100%",  // if scrollX is true without this line, table body and header might not align
+    "scrollY": true,
     "pageLength": 20,
     //"lengthChange": false, // dont show "Show xx entries" by default
     "pagingType": "simple", // use simple pagination
@@ -419,6 +420,10 @@ $(document).ready(function() {
       },
       {
         target: 11,  // hide the EI column, required for row grouping by EI
+        visible: false
+      },
+      {
+        target: 12,  // hide the ReP column
         visible: false
       },
 

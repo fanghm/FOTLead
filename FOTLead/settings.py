@@ -38,8 +38,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'fotd',
+    #'django_python3_ldap',
+    'tracker',
+    'crispy_forms',
+    'crispy_bootstrap4',
 ]
-
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -106,12 +110,18 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'UTC'   #Asia/Shanghai
 
 USE_I18N = True
 
 USE_TZ = True
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
@@ -124,3 +134,92 @@ STATIC_ROOT = [os.path.join(BASE_DIR, 'staticfiles')]
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# mail settings
+EMAIL_HOST = 'mail.emea.nsn-intra.net'
+EMAIL_PORT = 25
+EMAIL_FROM='frank.fang@nokia-sbell.com'
+
+# LDAP Authentication
+AUTHENTICATION_BACKENDS = [
+    #'fotd.backends.CustomLDAPBackend',
+    'django.contrib.auth.backends.ModelBackend',
+    #'django_python3_ldap.auth.LDAPBackend',
+]
+
+# LDAP Connection Settings
+# nslookup -type=srv _ldap._tcp.DOMAINNAME
+LDAP_AUTH_HOST = '10.159.212.221'   #'10.135.55.17'=ed-p-es.emea.nsn-net.net
+LDAP_AUTH_PORT = 389
+LDAP_AUTH_URL = 'ldap://{host}:{port}'.format(  #or ldaps
+    host=LDAP_AUTH_HOST,
+    port=LDAP_AUTH_PORT,
+)
+
+AUTH_USERNAME = 'testuser'
+AUTH_PASSWORD = 'xxx@yyy'
+
+#ldapsearch -x -H ldap://10.159.212.221 -b "ou=users,ou=UserAccounts,dc=nsn-intra,dc=net" "(sAMAccountName=yourUsername)"
+
+# Initiate TLS on connection.
+LDAP_AUTH_USE_TLS = False # True
+
+# The LDAP search base for looking up users.
+LDAP_AUTH_SEARCH_BASE = "OU=Users,OU=UserAccounts,DC=nsn-intra,DC=net"
+#"ou=People,dc=example,dc=com" CN=Users,DC=nsn-intra,DC=net
+
+
+# The LDAP class that represents a user.
+LDAP_AUTH_OBJECT_CLASS = "user"
+
+# User model fields mapped to the LDAP
+# attributes that represent them.
+LDAP_AUTH_USER_FIELDS = {
+    "username": "sAMAccountName",
+    "email": "mail",
+    "first_name": "givenName",
+    "last_name": "sn",
+    #"is_active": "accountExpires",
+}
+
+# A tuple of fields used to uniquely identify a user.
+LDAP_AUTH_USER_LOOKUP_FIELDS = ("username",)
+
+LDAP_AUTH_ACTIVE_DIRECTORY_DOMAIN = "nsn-intra.net"
+
+LDAP_AUTH_CLEAN_USER_DATA = "django_python3_ldap.utils.clean_user_data"
+
+LDAP_AUTH_SYNC_USER_RELATIONS = "django_python3_ldap.utils.sync_user_relations"
+
+LDAP_AUTH_FORMAT_SEARCH_FILTERS = "django_python3_ldap.utils.format_search_filters"
+
+LDAP_AUTH_FORMAT_USERNAME = "django_python3_ldap.utils.format_username_active_directory"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "django_ldap.log",
+            "mode": "a",
+        },
+    },
+    "loggers": {
+        "django_python3_ldap": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+        },
+    },
+}
+
+#LDAP fields:
+# displayName
+# title
+# employeeID
+# mail
+# memberOf
+# sAMAccountName (loginName)
