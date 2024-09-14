@@ -3,7 +3,7 @@
 {% load custom_filters %}
 
 {% block css %}
-  <link rel="stylesheet" href="{% static 'fotd/styles.css' %}">	
+  <link rel="stylesheet" href="{% static 'fotd/styles.css' %}">
   <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
   <style>
     .badge {
@@ -11,7 +11,7 @@
       display: inline-block;
       padding: 10px 20px;
     }
-    
+
     .badge::after {
       content: attr(data-count);
       position: absolute;
@@ -98,11 +98,11 @@
                 <span class="badge" data-count="{{ task_count }}">
                   <a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a>
                 </span>
-              {% else %}              
+              {% else %}
                 <a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a>
               {% endif %}
             </td>
-            <td>{{ f.text2_date | roughtime_since }} ago</td>
+            <td>{{ f.text2_date | roughtime_since }}</td>
           </tr>
         {% empty %}
           <tr>
@@ -160,10 +160,10 @@
           }
 
           var url = 'https://pronto.ext.net.nokia.com/pronto/problemReportSearch.html?freeTextdropDownID=prId&searchTopText=' + val;
-          window.open(url, '_blank'); 
+          window.open(url, '_blank');
         }
       });
-    
+
     function handleKeypress(event, urlTemplate, isJira) {
       var keycode = (event.keyCode ? event.keyCode : event.which);
       if (keycode == '13') {
