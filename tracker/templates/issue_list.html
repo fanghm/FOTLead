@@ -19,9 +19,13 @@
 		<ul>
 			{% for issue in issues %}
 				<li>
-					<a href="{% url 'tracker:issue_detail' issue.pk %}">
-						{{ issue.title }}
-					</a> - 
+						<a href="{% url 'tracker:issue_detail' issue.pk %}">
+						{% if issue.is_high_priority %}
+							<strong style="color: orange;">{{ issue.title }}</strong>
+						{% else %}
+							{{ issue.title }}
+						{% endif %}
+					</a> -
 					{% if issue.status == 'in_progress' %}
 						<strong style="color: red;">{{ issue.get_status_display }}</strong>
 					{% else %}

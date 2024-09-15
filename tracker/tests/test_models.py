@@ -1,5 +1,7 @@
 from django.test import TestCase
-from tracker.models import Issue, Comment
+
+from tracker.models import Comment, Issue
+
 
 class IssueModelTest(TestCase):
 
@@ -9,7 +11,7 @@ class IssueModelTest(TestCase):
             title="Test Issue",
             description="This is a test issue.",
             type="bug",
-            status="open"
+            status="open",
         )
 
     def test_issue_creation(self):
@@ -23,6 +25,13 @@ class IssueModelTest(TestCase):
     def test_issue_str(self):
         self.assertEqual(str(self.issue), "Test Issue")
 
+    def test_issue_is_high_priority(self):
+        self.assertFalse(self.issue.is_high_priority())
+
+        self.issue.priority = "high"
+        self.assertTrue(self.issue.is_high_priority())
+
+
 class CommentModelTest(TestCase):
 
     @classmethod
@@ -31,12 +40,10 @@ class CommentModelTest(TestCase):
             title="Test Issue",
             description="This is a test issue.",
             type="bug",
-            status="open"
+            status="open",
         )
         cls.comment = Comment.objects.create(
-            issue=cls.issue,
-            author="Test Author",
-            text="This is a test comment."
+            issue=cls.issue, author="Test Author", text="This is a test comment."
         )
 
     def test_comment_creation(self):
