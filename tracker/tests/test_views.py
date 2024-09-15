@@ -36,6 +36,7 @@ class IssueFormViewTests(TestCase):
             "description": "Updated Description",
             "status": "closed",
             "priority": "high",
+            "author": "tester",
         }
 
         response = self.client.post(
@@ -126,6 +127,8 @@ class IssueDetailViewTests(TestCase):
             description="Test Description",
             type="bug",
             status="in_progress",
+            priority="high",
+            author="testuser",
         )
         self.comment = Comment.objects.create(
             issue=self.issue, author="testuser", text="Test Comment"
@@ -149,15 +152,19 @@ class IssueDetailViewTests(TestCase):
     def test_issue_detail_post(self):
         self.client.login(username="testuser", password="Test1Pwd!")
         data = {
-            "text": "New Comment",
+            "text": "New Comment for test_issue_detail_post()",
+            "author": "testuser",  # TODO: case will fail without this line
         }
         response = self.client.post(
             reverse("tracker:issue_detail", args=[self.issue.pk]), data
         )
+
+        if response.status_code != 302:
+            print(response.content)
         self.assertEqual(response.status_code, 302)  # redirect
         self.assertEqual(Comment.objects.count(), 2)
-        new_comment = Comment.objects.latest("created_at")
 
+        new_comment = Comment.objects.latest("created_at")
         # print(f'Comment: {new_comment.text} by {new_comment.author}')
         self.assertEqual(new_comment.text, data["text"])
         self.assertEqual(new_comment.issue, self.issue)

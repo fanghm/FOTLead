@@ -1,25 +1,26 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html>
 <head>
 	<title>Issue Detail</title>
 </head>
 <body>
-	<h1>{{ issue.title }}</h1>
-	<p><strong>{{ issue.description|linebreaksbr }}</strong></p>
-	<p>Type: {{ issue.get_type_display }}</p>
-	<p>Status: {{ issue.get_status_display }}</p>
-	<p>Created at: {{ issue.created_at }}</p>
-	<p>Updated at: {{ issue.updated_at }}</p>
+	<h1>[{{ issue.get_type_display }}] {{ issue.title }}</h1>
+	<p><strong>{{ issue.author|rjust:"30"|safe }}</strong> opened this issue {{ issue.created_at|naturaltime }}</p>
+	<h3><strong>{{ issue.description|linebreaksbr }}</strong></h3>
 	<p><a href="{% url 'tracker:issue_edit' issue.pk %}">Edit</a></p>
 
+	{% if comments %}
 	<h2>Comments</h2>
 	<ul>
 		{% for comment in comments %}
 			<li>
-				<strong>{{ comment.text|linebreaksbr }}</strong> - {{ comment.author }}@{{ comment.created_at }}				
+				<strong>{{ comment.author }}</strong> commented {{ comment.created_at|timesince }} ago
+				<p>{{ comment.text|linebreaksbr }}</p>
 			</li>
 		{% endfor %}
 	</ul>
+	{% endif %}
 
 	<h2>Add a comment</h2>
 	<form method="post">

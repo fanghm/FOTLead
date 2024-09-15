@@ -6,8 +6,9 @@ from .models import Comment, Issue
 class IssueForm(forms.ModelForm):
     class Meta:
         model = Issue
-        fields = ["type", "title", "description", "status", "priority"]
+        fields = ["author", "type", "title", "description", "status", "priority"]
         widgets = {
+            "author": forms.HiddenInput(),
             "title": forms.TextInput(attrs={"size": 107}),
             "description": forms.Textarea(attrs={"rows": 20, "cols": 100}),
         }

@@ -29,6 +29,7 @@ class Issue(models.Model):
     type = models.CharField(max_length=20, choices=ISSUE_TYPES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
     priority = models.CharField(max_length=9, choices=PRIORITY_LEVELS, default="medium")
+    author = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -47,7 +48,7 @@ class Issue(models.Model):
 
 class Comment(models.Model):
     issue = models.ForeignKey(Issue, related_name="comments", on_delete=models.CASCADE)
-    author = models.CharField(max_length=100, null=True, blank=True)
+    author = models.CharField(max_length=100)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

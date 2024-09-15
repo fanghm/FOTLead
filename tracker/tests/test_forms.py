@@ -14,6 +14,7 @@ class IssueFormTest(TestCase):
                 "description": "This is a test issue.",
                 "status": "open",
                 "priority": "critical",
+                "author": "tester",
             }
         )
         self.assertTrue(form.is_valid())
@@ -21,7 +22,7 @@ class IssueFormTest(TestCase):
     def test_issue_form_invalid_data(self):
         form = IssueForm(data={})
         self.assertFalse(form.is_valid())
-        self.assertEqual(len(form.errors), 4)  # 4 fields are mandatory
+        self.assertEqual(len(form.errors), 5)  # 5 fields are mandatory
 
 
 class CommentFormTest(TestCase):
@@ -34,6 +35,7 @@ class CommentFormTest(TestCase):
             type="bug",
             status="open",
             priority="high",
+            author="tester",
         )
 
     def test_comment_form_valid_data(self):
@@ -50,7 +52,7 @@ class CommentFormTest(TestCase):
     def test_comment_form_invalid_data(self):
         form = CommentForm(data={})
         self.assertFalse(form.is_valid())
-        self.assertEqual(len(form.errors), 2)  # 'text' and Issue are mandatory
+        self.assertEqual(len(form.errors), 3)  # 'text' and Issue are mandatory
 
     def test_comment_form_save(self):
         form = CommentForm(
