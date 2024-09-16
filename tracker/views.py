@@ -85,14 +85,10 @@ def issue_detail(request, pk):
     issue = get_object_or_404(Issue, pk=pk)
     comments = issue.comments.all()
 
-    print(f"{request.method} issue_detail: {issue}, {comments}")
     if request.method == "POST":
-        comment_form = CommentForm(request.POST, issue=issue)
+        comment_form = CommentForm(request.POST, issue=issue, user=request.user)
         if comment_form.is_valid():
-            comment = comment_form.save(commit=False)
-            comment.author = request.user.username  # use the login user
-            comment.issue = issue
-            comment.save()
+            comment_form.save()
 
             # print("redirect after comment save")
             return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))

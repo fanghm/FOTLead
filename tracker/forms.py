@@ -1,4 +1,5 @@
 from django import forms
+from django.db import transaction
 
 from .models import Comment, Issue
 
@@ -28,9 +29,8 @@ class CommentForm(forms.ModelForm):
 
     class Meta:
         model = Comment
-        fields = ["author", "text"]
+        fields = ["text"]
         widgets = {
-            "author": forms.HiddenInput(),
             "text": forms.Textarea(attrs={"rows": 10, "cols": 100}),
         }
         labels = {
@@ -39,31 +39,31 @@ class CommentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.issue = kwargs.pop("issue", None)
+        self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+
         if self.issue:
             self.fields["new_status"].initial = self.issue.status
             self.fields["new_priority"].initial = self.issue.priority
 
     def clean(self):
         cleaned_data = super().clean()
-        if not self.issue:
-            raise forms.ValidationError("Issue is mandatory")
+        if not self.issue or not self.user:
+            raise forms.ValidationError("User/Issue is mandatory")
         return cleaned_data
 
-    def save(self, commit=True):
-        comment = super().save(commit=False)
+    @transaction.atomic
+    def save(self):
+        comment = super().save(False)
+        comment.issue = self.issue
+        comment.author = self.user.username
+        comment.save()
+
         new_status = self.cleaned_data["new_status"]
         new_priority = self.cleaned_data["new_priority"]
-
-        if self.issue:
-            comment.issue = self.issue
-
-            if new_status != self.issue.status or new_priority != self.issue.priority:
-                self.issue.status = new_status
-                self.issue.priority = new_priority
-                self.issue.save()
-
-        if commit:
-            comment.save()
+        if new_status != self.issue.status or new_priority != self.issue.priority:
+            self.issue.status = new_status
+            self.issue.priority = new_priority
+            self.issue.save()
 
         return comment
