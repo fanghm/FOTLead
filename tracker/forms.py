@@ -7,12 +7,23 @@ from .models import Comment, Issue
 class IssueForm(forms.ModelForm):
     class Meta:
         model = Issue
-        fields = ["author", "type", "title", "description", "status", "priority"]
+        fields = ["type", "title", "description", "status", "priority"]
         widgets = {
-            "author": forms.HiddenInput(),
             "title": forms.TextInput(attrs={"size": 107}),
             "description": forms.Textarea(attrs={"rows": 20, "cols": 100}),
         }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        issue = super().save(commit=False)
+        if self.user:
+            issue.author = self.user.username
+        if commit:
+            issue.save()
+        return issue
 
 
 class CommentForm(forms.ModelForm):

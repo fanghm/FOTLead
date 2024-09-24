@@ -15,7 +15,6 @@ class IssueFormTest(TestCase):
                 "description": "This is a test issue.",
                 "status": "open",
                 "priority": "critical",
-                "author": "tester",
             }
         )
         self.assertTrue(form.is_valid())
@@ -23,7 +22,9 @@ class IssueFormTest(TestCase):
     def test_issue_form_invalid_data(self):
         form = IssueForm(data={})
         self.assertFalse(form.is_valid())
-        self.assertEqual(len(form.errors), 5)  # 5 fields are mandatory
+
+        # 5 fields are mandatory, but author is not included in the form
+        self.assertEqual(len(form.errors), 4)
 
 
 class CommentFormTest(TestCase):

@@ -7,7 +7,7 @@
 <body>
 	<h1>[{{ issue.get_type_display }}] {{ issue.title }}</h1>
 	<p><strong>{{ issue.author|rjust:"30"|safe }}</strong> opened this issue {{ issue.created_at|naturaltime }}</p>
-	<h3><strong>{{ issue.description|linebreaksbr }}</strong></h3>
+	<p style="font-size: 1.2em;">{{ issue.description|linebreaksbr }}</p>
 	<p><a href="{% url 'tracker:issue_edit' issue.pk %}">Edit</a></p>
 
 	{% if comments %}

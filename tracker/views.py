@@ -17,13 +17,13 @@ def issue_form(request, pk=None):
         issue = Issue()
 
     if request.method == "POST":
-        form = IssueForm(request.POST, instance=issue)
+        form = IssueForm(request.POST, instance=issue, user=request.user)
         if form.is_valid():
-            form.author = request.user.username  # use the login user
-            form.save()
+            issue = form.save(commit=False)
+            issue.save()
             return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))
     else:
-        form = IssueForm(instance=issue)
+        form = IssueForm(instance=issue, user=request.user)
 
     return render(request, "issue_form.html", {"form": form, "issue": issue})
 
