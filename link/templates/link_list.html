@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Link List{% endblock %}
+
+{% block content %}
+    <h2>Link List</h2>
+    <ul>
+        {% for link in links %}
+            <li>
+                <a href="{{ link.url }}" target="_blank">{{ link.name }}</a>
+                <p>{{ link.description }}</p>
+                <p>Type: {{ link.get_type_display }}</p>
+                <p>Status: {{ link.get_status_display }}</p>
+                <p>Submitted by: {{ link.submitted_by }}</p>
+                {% if link.status == 'pending' %}
+                    <a href="{% url 'link_approve' link.id %}">Approve</a>
+                {% endif %}
+                <a href="{% url 'link_edit' link.id %}">Edit</a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
