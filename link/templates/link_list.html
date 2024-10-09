@@ -1,22 +1,50 @@
-{% extends 'base.html' %}
+{% extends 'link_base.html' %}
 
 {% block title %}Link List{% endblock %}
 
+{% block styles %}
+.az-navbar {
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+.az-navbar a {
+    margin-right: 10px;
+    text-decoration: none;
+    color: #000;
+}
+
+.az-navbar a.active {
+    font-weight: bold;
+    color: #007bff;
+}
+{% endblock %}
+
 {% block content %}
     <h2>Link List</h2>
-    <ul>
-        {% for link in links %}
-            <li>
-                <a href="{{ link.url }}" target="_blank">{{ link.name }}</a>
-                <p>{{ link.description }}</p>
-                <p>Type: {{ link.get_type_display }}</p>
-                <p>Status: {{ link.get_status_display }}</p>
-                <p>Submitted by: {{ link.submitted_by }}</p>
-                {% if link.status == 'pending' %}
-                    <a href="{% url 'link_approve' link.id %}">Approve</a>
-                {% endif %}
-                <a href="{% url 'link_edit' link.id %}">Edit</a>
-            </li>
+
+    <!-- A-Z navigation bar -->
+    <div class="az-navbar">
+        Index:
+        {% for initial in domain_initials %}
+            <a href="?index={{ initial }}"
+               class="{% if initial == selected_initial %}active{% endif %}">
+               {{ initial }}
+            </a>
         {% endfor %}
-    </ul>
+    </div>
+
+    {% for domain, links in grouped_links %}
+        <div class="domain-group">
+            <h3>{{ domain }}</h3>
+            <ul>
+                {% for link in links %}
+                    <li>
+                        <a href="{{ link.url }}" target="_blank">{{ link.name }}</a>
+                        <p>{{ link.description }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
 {% endblock %}

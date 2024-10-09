@@ -1,0 +1,19 @@
+{% extends 'link_base.html' %}
+
+{% block title %}Link Admin{% endblock %}
+
+{% block content %}
+    <h2>Link Admin</h2>
+    <p><a href="{% url 'link:link_add' %}">Add a link</a></p>
+
+    {% for status, links in grouped_links.items %}
+        <h3>{{ status |title }}</h3>
+        <ul>
+            {% for link in links %}
+                <li>
+                    <a href="{% url 'link:link_edit' link.id %}">{{ link.name }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endfor %}
+{% endblock %}

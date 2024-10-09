@@ -7,6 +7,7 @@ class Link(models.Model):
         ("process", "Process"),
         ("tool", "Tool"),
         ("document", "Document"),
+        ("contact", "Contact"),
         ("other", "Other"),
     ]
 
