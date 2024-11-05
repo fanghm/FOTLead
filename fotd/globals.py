@@ -11,14 +11,14 @@ SprintDates = namedtuple('SprintDates', ['start_date', 'end_date'])
 
 
 def _query_database_for_fb_dict():
-    print("Querying database for FB data")
+    # print("Querying database for FB data")
     sprints = Sprint.objects.values('fb', 'start_date', 'end_date')
     fb_dict = {
         sprint['fb']: SprintDates(sprint['start_date'], sprint['end_date'])
         for sprint in sprints
     }
 
-    print(f'FB dict size: {len(fb_dict)}')
+    # print(f'FB dict size: {len(fb_dict)}')
     return fb_dict
 
 
