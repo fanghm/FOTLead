@@ -39,18 +39,18 @@
       box-shadow: 0 0 2px rgba(0,0,0,0.1);
       font-size: 15px !important;
     }
-    
+
   </style>
   <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.1.0/css/dataTables.dataTables.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.5.0/css/rowGroup.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.css">
 {% endblock %}
 
-{% block script %} 
+{% block script %}
   <script src="{% static 'fotd/jquery-ui.min.js' %}"></script>
   <!-- RowGroup requires DataTables 1.11 or newer -->
-  <script type="text/javascript" src="https://cdn.datatables.net/2.0.8/js/dataTables.js" ></script>
+  <script type="text/javascript" src="{% static 'fotd/dataTables_2.1.0_wa.js' %}" ></script>
 
   <script src="https://cdn.datatables.net/rowgroup/1.5.0/js/dataTables.rowGroup.min.js"></script>
   <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.js"></script>
@@ -63,7 +63,7 @@
   <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.colVis.min.js"></script>
 {% endblock %}
 
-{% block nav_link %} 
+{% block nav_link %}
 |&nbsp;<a style="text-align: right;" href="{% url 'fotd:detail' fid %}">{{fid}}</a>
 {% endblock %}
 
@@ -79,7 +79,7 @@
 </div>
 {% if not result %}
   <p style="color: red; font-weight: bold;">Feature backlog not found, pls make sure the feature ID is correct.</p>
-  <p>If the feature already done, click 
+  <p>If the feature already done, click
   <a href="{% if '?' in request.get_full_path %}{{ request.get_full_path }}&query_done=True{% else %}{{ request.get_full_path }}?query_done=True{% endif %}">
   here</a>.</p>
 {% else %}
@@ -114,15 +114,15 @@
 
             {% elif field_name == "Progress" %}
               <td class="no-wrap">
-                <div class="progress" {% if item.Risk_Status == 'Yellow' or item.Risk_Status == 'Red' %}style="background-color: {{item.Risk_Status|lower}};" 
+                <div class="progress" {% if item.Risk_Status == 'Yellow' or item.Risk_Status == 'Red' %}style="background-color: {{item.Risk_Status|lower}};"
                     title="Risk detail: {% if item.Risk_Details %} {{ item.Risk_Details }} {% else %} Not set {% endif %}" {% endif %}>
-                  <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" 
+                  <div class="progress-bar {% if field_value >= 99.9 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar"
                     style="width: {{ field_value }}%" aria-valuenow="{{ field_value }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
               </td>
 
             {% elif field_name == "End_FB" %}
-              {% if field_value %} 
+              {% if field_value %}
               <td class="no-wrap {{item.tags}}" {% if item.hints %} title="{{ item.hints|safe }}" data-tooltip="{{ item.hints|safe }}" {% endif %}>
                 {{ field_value }}
                 {% if item.Key in endfb_changed_items %} <span style="font-size: x-small;">({{ endfb_changed_items|get_previous_end_fb:item.Key }})</span> {% endif %}
@@ -137,7 +137,7 @@
                 {% endif %}
               {% endif %}
               </td>
-            
+
             {% elif field_name == "RC_Status" %}
               <td class="no-wrap rcStatusCell" style="font-size: 0.7em;">
               {% if field_value %}
@@ -169,14 +169,15 @@
               <td class="no-wrap assigneeCell">
                 {% if not field_value %}
                   <span style="background-color: orange;">(Not Assigned)</span>
-                  <select class="selectForAssignee" data-item_key="{{ item.Key }}" style="width: 110px;">
+                  <!--select class="selectForAssignee" data-item_key="{{ item.Key }}" style="width: 110px;">
                     <option value="">Options...</option>
                     <option value="assignAPO">Assign to L-APO: James Bond</option>
                     <option value="sendMail" data-lapo_email="I_MN_RAN_L2_LAPO_GMS">Mail to: I_MN_RAN_L2_LAPO_GMS</option>
                     <option value="openCampPage" data-url="http://camp.example.com">Open the CAMP page...</option>
-                  </select>
+                  </select-->
                 {% else %}
                   {{ field_value|linkify }}
+                  <span class="hidden-assignee-for-copy" style="display:none;">{{ field_value }}</span>
                 {% endif %}
               </td>
 
@@ -248,7 +249,7 @@
 <script>
 $(document).ready(function() {
   function _group_by(dt, dataColumn) {
-    if(dataColumn === -1) { // no grouping      
+    if(dataColumn === -1) { // no grouping
       if(dt.rowGroup().enabled()) {
         dt.rowGroup().disable().draw();
       }
@@ -289,10 +290,10 @@ $(document).ready(function() {
 
   var table = $('.table').DataTable({
     ordering: true,
-    order: [[5, "asc"],[2, "asc"]], 
+    order: [[5, "asc"],[2, "asc"]],
     responsive: true,
     //orderFixed: [1, 'asc'],
-    rowGroup: { enable: false },
+    rowGroup: { enable: false, dataSrc: 10 },
     //"stateSave": true,
     "scrollX": true,
     "sScrollXInner": "100%",  // if scrollX is true without this line, table body and header might not align
@@ -364,7 +365,7 @@ $(document).ready(function() {
                           },
                           orientation: 'landscape',
                           footer: false,
-                          download: 'open',                        
+                          download: 'open',
                           exportOptions: {
                               columns: ':visible',
                               format: {
@@ -383,12 +384,12 @@ $(document).ready(function() {
                       }
                   ]
               },
-              { 
+              {
                 text: 'Table control',
-                extend: 'collection',                
+                extend: 'collection',
                 autoClose: true,
                 buttons: [
-                    { 
+                    {
                         text: 'Toggle 1-2',
                         action: function ( e, dt, node, config ) {
                             dt.column( 1 ).visible( ! dt.column( 1 ).visible() );
@@ -396,12 +397,12 @@ $(document).ready(function() {
                             this.active(!this.active());
                         }
                     },
-                    { 
+                    {
                         text: 'Plan Visualization',
                         action: function ( e, dt, node, config ) {
                           for (col of nonSortableColumns)
                             dt.column(col).visible( !dt.column(col).visible() );
-                            
+
                           dt.column(9).visible(false); // hide progress column
                           dt.column(10).visible(false); // hide sub-feature column
                           dt.column(11).visible(false); // hide EI column
@@ -436,7 +437,7 @@ $(document).ready(function() {
 
     // "drawCallback": function(settings) {
     //   var api = this.api();
-    //   if (api.page.info().pages <= 1) { 
+    //   if (api.page.info().pages <= 1) {
     //     $('#' + api.table().node().id + '_paginate').hide(); // hide pagination if only one page
     //   } else {
     //     $('#' + api.table().node().id + '_paginate').show();
@@ -458,11 +459,11 @@ $(document).ready(function() {
           ? i
           : 0;
       };
-    
+
       // Total over all pages
       total_effort = api.column(6).data().reduce((a, b) => intVal(a) + intVal(b), 0);
       total_remaining = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
-    
+
       // count the number of unique Competence Areas
       let caValues = api.column(1).data().toArray();
       let uniqueCaValues = new Set(caValues);
@@ -474,7 +475,7 @@ $(document).ready(function() {
       let rfcOrCommittedCount = api.column(8).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
       let rfcPercentage = (rfcOrCommittedCount / totalRows * 100).toFixed(0);
       let donePercentage = ((total_effort - total_remaining) / total_effort * 100).toFixed(1);
-    
+
       // Update footer
       api.column(1).footer().innerHTML = `${uniqueCaCount} Areas`;
       api.column(3).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
@@ -491,15 +492,23 @@ $(document).ready(function() {
       table.order.fixed({ pre: [[val, 'asc']] }).draw();
   });
 
+  // row group
+  //table._group_by(dt, 10);
+
   // Use event delegation to catch the click event on the dynamically added button
   $('body').on('click', '#copyToClipboard', function() {
-    var columnData = table.column(4).data();
-  
+    var columnData = table.column(3).nodes().to$()
+        .find('.hidden-assignee-for-copy')
+        .map(function() {
+            return $(this).text();
+        }).get();
+
     var filteredData = columnData.filter(function(value) {
-      return !value.includes("Not Assigned");
+      return value.trim() !== "";
     });
 
-    var joinedData = filteredData.unique().join(';');
+    var uniqueData = [...new Set(filteredData)];
+    var joinedData = uniqueData.join(';');
 
     navigator.clipboard.writeText(joinedData).then(function() {
       alert('All names copied to your clipboard!');
@@ -507,7 +516,7 @@ $(document).ready(function() {
       console.error('Could not copy text: ', err);
     });
   });
-  
+
   const REQ_TYPE_PLANNING = "Planning";
   const REQ_TYPE_RFC = "RfC";
   function _send_mail_req(req_type, fid, area, item_keys, first_name, apo_email) {
@@ -551,7 +560,7 @@ $(document).ready(function() {
         console.log('Send a mail to Assignee/APO for planning of ', item_key);
         _send_mail_req(REQ_TYPE_PLANNING, fid, area, [item_key], first_name, apo_email);
         break;
-        
+
     default:
       alert("Pls select an option.");
     }
@@ -593,7 +602,7 @@ $(document).ready(function() {
       //console.log(keysWithSameAssigneeAndUnsetRCStatus);
       //alert("found keys: " + keysWithSameAssigneeAndUnsetRCStatus.length);
       break;
-        
+
     default:
       alert("Pls select an option.");
     }
@@ -613,7 +622,7 @@ $(document).ready(function() {
       case 'sendMail':
         console.log('Send a mail to L-APO for ', item_key);
         //break;
-        
+
       default:
         console.log('Not implented yet.');
         alert("Not implented yet.");

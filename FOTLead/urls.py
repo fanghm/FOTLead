@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
+    path("select2/", include("django_select2.urls")),
     path("", include("fotd.urls")),
     path("link/", include("link.urls")),
     path("tracker/", include("tracker.urls")),

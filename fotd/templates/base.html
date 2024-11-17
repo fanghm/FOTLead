@@ -22,9 +22,9 @@
     </style>
 
     {% block css %} {% endblock %}
-        
+
     <script src="{% static 'fotd/jquery.min.js' %}"></script>
-    
+
     {% block script %} {% endblock %}
   </head>
 
@@ -36,7 +36,7 @@
     {% endif %}
 
     <div id="user-tools">
-      {{ request.session.today }}&nbsp;|&nbsp;{{ request.session.wk }}&nbsp;|&nbsp;     
+      {{ request.session.today }}&nbsp;|&nbsp;{{ request.session.wk }}&nbsp;|&nbsp;
       {% if request.path == fb_url %}
         <span>{{ request.session.fb }}</span>
       {% else %}
@@ -50,18 +50,20 @@
         <strong>Guest</strong>!
       {% endif %}
     </div>
-    
+
     <div class="main-container">
-      {% block content %} 
+      {% block content %}
       {% endblock %}
 
       <hr>
       <footer class="center">
-        <p>&copy; 2024 FOTL Dashboard (<a href="{% url 'tracker:issue_create' %}" target="_blank">bug/idea?</a>)</p>
+        <p>&copy; 2024 FOTL Dashboard
+          | <a href="{% url 'tracker:issue_create' %}" target="_blank">Issue Tracker</a>
+          | <a href="{% url 'link:link_list' %}" target="_blank">Links</a></p>
       </footer>
     </div>
-    
+
     {% block bottom %} {% endblock %}
-    
+
   </body>
 </html>

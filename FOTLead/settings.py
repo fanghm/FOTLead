@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "tracker",
     "crispy_forms",
     "crispy_bootstrap4",
+    'django_select2',
 ]
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
@@ -125,6 +126,7 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "unique-snowflake",
     }
+    # TODO: select2 will run into issues when scaling up into multiple app servers
 }
 
 # Static files (CSS, JavaScript, Images)
@@ -158,7 +160,7 @@ LDAP_AUTH_URL = "ldap://{host}:{port}".format(  # or ldaps
     port=LDAP_AUTH_PORT,
 )
 
-AUTH_USERNAME = "testuser"
+AUTH_USERNAME = "qwn783"
 AUTH_PASSWORD = "xxx@yyy"
 
 # ldapsearch -x -H ldap://10.159.212.221

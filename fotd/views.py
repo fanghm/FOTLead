@@ -241,7 +241,9 @@ def check_plan_fitting(result, boundary):
                 item, f"Not fitting to Program boundary: {not_fitting_items[key]}"
             )  # NO QA
 
-    print(f"not_fitting_items: {not_fitting_items}")
+    if not_fitting_items:
+        print(f"not_fitting_items: {not_fitting_items}")
+
     return not_fitting_items
 
 

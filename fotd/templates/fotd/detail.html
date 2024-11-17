@@ -21,7 +21,7 @@
           {% endif %}
         </li>
         <!--li>Release: {{ feature.release }} | Priority: {{ feature.priority }}</li-->
-        <li>Desc / Labels: {{ feature.desc|urlize }}</li>
+        <li>Desc / Labels: {{ feature.desc|linkify }}</li>
         <li>Text2:<br>{{ feature.text2_desc|escape|linebreaksbr|linkify }}</li>
         </li>
       </ul>
@@ -51,7 +51,7 @@
         {% empty %}
           <li id="feature_update_empty">No update yet</p>
         {% endfor %}
-        
+
         <li id="feature_update_hidden_placeholder" style="display: none;"></li>
       </ul>
   </div>
@@ -89,7 +89,7 @@
 
         {% if tasks %}
           {% for task in tasks %}
-            <li><a href="/task/{{ task.id }}/">{{ task.title|urlizetrunc:30 }}</a> - {{task.owner}} | 
+            <li><a href="/task/{{ task.id }}/">{{ task.title|urlizetrunc:30 }}</a> - {{task.owner}} |
               {% if task.due < today %}
                 <span style="color: red;">{{ task.due }}</span>
               {% else %}
@@ -109,7 +109,7 @@
               <li id="task_{{task.id}}_hidden_placeholder" style="display: none;"></li>
               {% if task.statusUpdates %}
                 {% for statusUpdate in task.statusUpdates %}
-                  <li>{{ statusUpdate|urlize|linkify }}</li>
+                  <li>{{ statusUpdate|safe|linkify }}</li>
                 {% endfor %}
               {% endif %}
             </ul>
@@ -177,11 +177,11 @@
             var today = new Date();
             var dd = String(today.getDate()).padStart(2, '0');
             var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
-            var yyyy = today.getFullYear();            
+            var yyyy = today.getFullYear();
             var today_str = yyyy + '-' + mm + '-' + dd;
 
             $('<li><a href="/task/' + response.id + '/">' + response.title +'</a> - ' + response.owner
-               + ' | ' + formattedDate + '<button class="addTaskStatusBtn" data-task-id="' 
+               + ' | ' + formattedDate + '<button class="addTaskStatusBtn" data-task-id="'
                + response.id + '">+</button></li>\n'
               + '<ul><form class="addTaskStatusForm" style="display:none;" data-task-id="' + response.id +'">'
               + '<input type="date" name="date" value="' + today_str + '" style="display: inline-block;" max="' + today_str + '">'
@@ -189,14 +189,14 @@
               + '<button type="submit">Add</button>'
               + '<button type="button" class="cancelTaskStatusBtn">Cancel</button>'
               + '</form> <li id="task_' + response.id +'_hidden_placeholder" style="display: none;"></li></ul>').insertAfter('#task_list_hidden_placeholder');
-            
+
             $('#task_empty').hide();
             form.hide();
             $('.addTaskBtn').show()
           }
         });
       });
-      
+
       // Feature Status Update
       $('.addUpdateBtn').click(function(){
         $(this).hide();
@@ -239,7 +239,7 @@
       var taskId = $(this).data('task-id');
       $('.addTaskStatusForm[data-task-id="' + taskId + '"]').show();
     });
-    
+
     $(document).on('click', '.cancelTaskStatusBtn', function() {
       var form = $(this).closest('form');
       var taskId = form.data('task-id');
