@@ -1,9 +1,12 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Link Management{% endblock %}</title>
+
+    <link href="/static/admin/css/vendor/select2/select2.min.css" media="screen" rel="stylesheet">
     <style>
         .divider {
             border-bottom: 2px solid #ccc;
@@ -27,5 +30,11 @@
     <footer>
         <p>&copy; 2023 Link Management</p>
     </footer>
+
+    <!-- load jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/static/admin/js/vendor/select2/select2.full.min.js"></script>
+
+    {% block bottom %}{% endblock %}
 </body>
 </html>

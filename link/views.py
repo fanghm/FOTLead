@@ -19,7 +19,7 @@ def link_admin(request):
 
 
 def link_list(request):
-    links = Link.objects.all()
+    links = Link.objects.filter(status="approved")
 
     domain_initials = sorted(set(link.domain[0].upper() for link in links))
     selected_initial = request.GET.get(
@@ -48,11 +48,13 @@ def link_list(request):
 def link_add(request):
     if request.method == "POST":
         form = LinkForm(request.POST)
+        # print(f'INIT form: {form}')
         if form.is_valid():
             link = form.save(commit=False)
             link.submitted_by = request.user
+            print(f'VALID link: {link}')
             link.save()
-            return redirect(reverse("link:link_list"))
+            return redirect(reverse("link:link_admin"))
     else:
         form = LinkForm()
     return render(request, "link_form.html", {"form": form})

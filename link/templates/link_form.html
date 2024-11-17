@@ -10,3 +10,11 @@
         <button type="submit">Submit</button>
     </form>
 {% endblock %}
+
+{% block bottom %}
+<script>
+    $(document).ready(function() {
+        $('#id_tags').select2();
+    });
+</script>
+{% endblock %}
