@@ -48,9 +48,9 @@
       <div class="form-group">
         <label for="status">Status:</label>
         <select class="form-control" name="status">
-          <option value="Ongoing" {% if task.status == "ongoing" %}selected{% endif %}>Ongoing</option>
-          <option value="Blocked" {% if task.status == "blocked" %}selected{% endif %}>Blocked</option>
-          <option value="Completed" {% if task.status == "closed" %}selected{% endif %}>Closed</option>
+          <option value="ongoing" {% if task.status == "ongoing" %}selected{% endif %}>Ongoing</option>
+          <option value="blocked" {% if task.status == "blocked" %}selected{% endif %}>Blocked</option>
+          <option value="closed" {% if task.status == "closed" %}selected{% endif %}>Closed</option>
         </select>
       </div>
 
@@ -78,7 +78,7 @@
         var taskId = $(this).attr('data-task-id');
         var fid = $(this).attr('data-feat-id');
         var formData = $(this).serialize(); // NOTE: if #top checkbox not selected, then its value won't be serialized
-        //console.log('Form data:', formData);
+        // console.log('Form data:', formData);
 
         $.ajax({
           url: '/ajax_task_update/' + taskId + '/',

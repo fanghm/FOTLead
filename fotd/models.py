@@ -226,7 +226,7 @@ class Task(models.Model):
     owner = models.CharField(max_length=20)
     contact = models.CharField(max_length=100, blank=True)
     due = models.DateField()
-    status = models.CharField(max_length=11, default='Ongoing', choices=TASK_STATUS)
+    status = models.CharField(max_length=11, default='ongoing', choices=TASK_STATUS)
     chat = models.CharField(max_length=50, blank=True)
     mail = models.CharField(max_length=100, blank=True)
     meeting = models.CharField(max_length=100, blank=True)
