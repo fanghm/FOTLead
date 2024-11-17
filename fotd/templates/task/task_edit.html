@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block nav_link %} 
+{% block nav_link %}
 |&nbsp;<a style="text-align: right;" href="{% url 'fotd:detail' task.feature_id %}">{{task.feature_id}}</a>
 {% endblock %}
 
@@ -48,12 +48,9 @@
       <div class="form-group">
         <label for="status">Status:</label>
         <select class="form-control" name="status">
-          <option value="Not Started" {% if task.status == "Not Started" %}selected{% endif %}>Not Started</option>
-          <option value="Ongoing" {% if task.status == "Ongoing" %}selected{% endif %}>Ongoing</option>
-          <option value="On Hold" {% if task.status == "On Hold" %}selected{% endif %}>On Hold</option>
-          <option value="Blocked" {% if task.status == "Blocked" %}selected{% endif %}>Blocked</option>
-          <option value="Cancelled" {% if task.status == "Cancelled" %}selected{% endif %}>Cancelled</option>
-          <option value="Completed" {% if task.status == "Completed" %}selected{% endif %}>Completed</option>
+          <option value="Ongoing" {% if task.status == "ongoing" %}selected{% endif %}>Ongoing</option>
+          <option value="Blocked" {% if task.status == "blocked" %}selected{% endif %}>Blocked</option>
+          <option value="Completed" {% if task.status == "closed" %}selected{% endif %}>Closed</option>
         </select>
       </div>
 
@@ -77,12 +74,12 @@
     $(document).ready(function(){
       $("form").on('submit', function(event){
         event.preventDefault();
-  
+
         var taskId = $(this).attr('data-task-id');
         var fid = $(this).attr('data-feat-id');
         var formData = $(this).serialize(); // NOTE: if #top checkbox not selected, then its value won't be serialized
         //console.log('Form data:', formData);
-        
+
         $.ajax({
           url: '/ajax_task_update/' + taskId + '/',
           type: 'POST',
@@ -103,7 +100,7 @@
 
         var taskId = $("form").attr('data-task-id');
         var fid = $("form").attr('data-feat-id');
-  
+
         $.ajax({
           url: '/ajax_task_delete/' + taskId + '/',
           type: 'POST',
