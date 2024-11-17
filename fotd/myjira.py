@@ -1,14 +1,21 @@
+import getpass
+import traceback
 import urllib.parse
 from datetime import timedelta
 
 from django.conf import settings
-from jira import JIRA
+from jira import JIRA, JIRAError
 
 from .globals import _get_fb_end_date, _get_fb_start_date
 
 JIRA_TEXT2 = "customfield_38727"
 JIRA_RISK_STATUS = "customfield_38754"
 JIRA_SERVER_URL = "https://jiradc.ext.net.nokia.com"
+TEXT2_TEMPLATE = """A) Update Version: [24.11.17] <$username>\n\n
+B) Risk Situation and Management:
+N/A\n
+C) Feature Blocking Prontos: (F-level)
+N/A"""
 
 
 def _initJira():
@@ -275,18 +282,30 @@ def jira_get_text2(fid):
             jql_str, 0, 1, fields=f"{JIRA_TEXT2}, {JIRA_RISK_STATUS}", json_result=True
         )
 
+        print("jira_get_text2 result: " + str(json_result))
+        if json_result["total"] == 0:
+            return {
+                "status": "error",
+                "message": (
+                    "No result returned from JIRA, "
+                    "please ensure the feature ID is correct!"
+                ),
+            }
+
         issue = json_result["issues"][0]
         jira_key = issue["key"]
-        text2_desc = (
-            issue["fields"][JIRA_TEXT2] if JIRA_TEXT2 in issue["fields"] else "Not set"
-        )
+        fields = issue["fields"]
 
-        risk_status = (
-            issue["fields"][JIRA_RISK_STATUS]["value"]
-            if JIRA_RISK_STATUS in issue["fields"] and issue["fields"][JIRA_RISK_STATUS]
-            else "Green"
-        )
-        # print(f'{fid} key: {jira_key} Text2:{text2_desc}\n')
+        text2_desc = fields.get(JIRA_TEXT2)
+        if text2_desc is None:
+            text2_desc = TEXT2_TEMPLATE.replace("$username", getpass.getuser())
+
+        risk_status_field = fields.get(JIRA_RISK_STATUS)
+        if risk_status_field and "value" in risk_status_field:
+            risk_status = risk_status_field["value"]
+        else:
+            risk_status = "Green"
+
         return {
             "status": "success",
             "text2_desc": text2_desc,
@@ -294,7 +313,7 @@ def jira_get_text2(fid):
             "risk_status": risk_status,
         }
     except Exception as e:
-        print("Exception in jira_get_text2():\n" + str(e) + "\n" + issue)
+        print("Exception in jira_get_text2():\n" + str(e) + "\n" + json_result)
         return {"status": "error", "message": str(e)}
 
 
@@ -306,6 +325,12 @@ def jira_set_text2(jira_key, text2_desc, risk_status):
         issue.update(fields=update_dict)
         return {"status": "success"}
 
+    except JIRAError as e:
+        print("JIRAError in jira_set_text2():\n" + str(e))
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
     except Exception as e:
         print("Exception in jira_set_text2():\n" + str(e))
+        print("Exception type:", type(e))
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}

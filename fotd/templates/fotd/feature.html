@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block nav_link %} 
+{% block nav_link %}
 |&nbsp;<a style="text-align: right;" href="{% url 'fotd:detail' feature.id %}">{{feature.id}}</a>
 {% endblock %}
 
@@ -8,7 +8,7 @@
 
 {% if feature %}
   <h1 class="text-center">{{feature.id}}</h1>
-  
+
   <form id="text2_form" class="container" style="margin-top: 40px;" data-feature-id="{{ feature.id }}">
     {% csrf_token %}
 
@@ -25,16 +25,16 @@
         <option value="Red" {% if feature.risk_status == "Red" %}selected{% endif %}>Red</option>
       </select>
     </div>
-        
+
     <div class="form-group" id="riskDetail" {% if feature.risk_status != "Yellow" and feature.risk_status != "Red" %}style="display: none;"{% endif %}>
       <label for="risk_summary">Risk Summary:</label>
       <input id="risk_summary" class="form-control" type="text" name="risk_summary" value="{{feature.risk_summary}}">
     </div>
-    
+
     <button type="submit" id="getText2Btn" class="btn btn-primary">Query from JIRA</button>
     <button type="submit" id="setText2Btn" class="btn btn-secondary">Update to JIRA</button>
   </form>
-  
+
   <hr>
   <form id="feature_form" class="container" style="margin-top: 40px;" data-feature-id="{{ feature.id }}" >
     {% csrf_token %}
@@ -128,10 +128,10 @@
     $(document).ready(function(){
       $("#feature_form").on('submit', function(event){
         event.preventDefault();
-  
+
         var fid = $(this).attr('data-feature-id');
         var formData = $(this).serialize();
-  
+
         $.ajax({
           url: '/ajax_feature_update/' + fid + '/',
           type: 'POST',
@@ -157,14 +157,13 @@
 
       $("#text2_form").on('submit', function(event){
         event.preventDefault();
-  
+
         var fid = $(this).data('feature-id');
-  
+
         $.ajax({
           url: '/ajax_get_text2/' + fid + '/',
           type: 'GET',
           success: function(response){
-            //alert(response.text2_desc);
             var lines = response.text2_desc.split("\n").length;
             $('#text2_desc').attr('rows', lines+2);
 
@@ -174,7 +173,7 @@
             $('select[name="risk_status"]').val(response.risk_status).change();
           },
           error: function(response){
-            alert('Failed to query Text2/risk:\n' + response.message);
+            alert('Failed to query Text2/risk:\n' + response.responseJSON.message);
           }
         });
       });
@@ -186,7 +185,7 @@
 
         var today = new Date();
         var today_str = '[' + today.getFullYear().toString().slice(-2) + '.' + (today.getMonth() + 1) + '.' + today.getDate() + ']';
-        
+
         // update the date str [yy.mm.dd] to today
         var regex = /\[\d{2}\.\d{1,2}\.\d{1,2}\]/;
         var newText2 = text2_desc.replace(regex, today_str);
@@ -198,6 +197,8 @@
             'risk_status': $('select[name="risk_status"]').val(),
             'risk_summary': $('#risk_summary').val()
           }
+        //alert(JSON.stringify(data));
+
         $.ajax({
           url: '/ajax_set_text2/' + fid + '/',
           type: 'POST',
