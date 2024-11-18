@@ -88,14 +88,14 @@ def feature(request, fid):
 def ajax_feature_update(request, fid):
     if request.method == 'POST':
         feature = Feature.objects.get(id=fid)
+
         for key, value in request.POST.items():
             if hasattr(feature, key):
-                if key == 'boundary':  # boundary can be empty
-                    if isinstance(value, int):
-                        value = ProgramBoundary.objects.get(id=value)
-                    else:
-                        value = None
-                setattr(feature, key, value)
+                if key == 'boundary':  # foreign key
+                    key = 'boundary_id'
+
+                if value:
+                    setattr(feature, key, value)
 
         feature.save()
         response_data = {'status': 'success', 'message': 'Feature updated successfully'}
