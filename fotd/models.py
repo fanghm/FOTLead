@@ -9,16 +9,6 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls import reverse
 
-MILESTONE_CHOICES = [
-    ('N/A', 'N/A'),
-    ('I1 50%', 'I1 50%'),
-    ('I1', 'I1'),
-    ('I1.1', 'I1.1'),
-    ('I1.2', 'I1.2'),
-    ('P2', 'P2'),
-    ('Post P2', 'Post P2'),
-]
-
 PHASE_CHOICES = [
     ('Planning', 'Planning'),
     ('Development', 'Development'),
@@ -105,22 +95,19 @@ class Feature(models.Model):
 
     release = models.CharField(max_length=20)  # LLF/e-LLF has multiple releases
     priority = models.IntegerField(blank=True, validators=[MaxValueValidator(99999)])
-    milestone = models.CharField(blank=True, max_length=7, choices=MILESTONE_CHOICES)
+
+    # Labels like Test_Heavy, LeadTribe_xxx, program milestone, etc.
+    labels = models.CharField(blank=True, max_length=100)
     boundary = models.ForeignKey(
         ProgramBoundary, on_delete=models.PROTECT, blank=True, null=True
     )
 
-    # labels = models.CharField(max_length=100)  #Test_Heavy, LeadTribe_xxx, etc.
     phase = models.CharField(max_length=12, choices=PHASE_CHOICES, default='Planning')
     customer = models.CharField(max_length=100, blank=True)
+    apm = models.CharField(max_length=100, blank=True)
+    fusion_id = models.CharField(max_length=16, blank=True)
 
     # links
-    fusion_link = models.CharField(
-        max_length=300,
-        blank=True,
-        verbose_name='JIRA Structure',
-        help_text='Link to the JIRA Structure',
-    )
     fp_link = models.CharField(
         max_length=100, blank=True, verbose_name='FP Link', help_text='Link to the FP'
     )
@@ -129,12 +116,6 @@ class Feature(models.Model):
         blank=True,
         verbose_name='CFAM Link',
         help_text='Link to the CFAM',
-    )
-    gantt_link = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name='Gantt Chart',
-        help_text='Link to the Gantt Chart',
     )
     rep_link = models.CharField(
         max_length=100,

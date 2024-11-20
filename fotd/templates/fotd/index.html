@@ -50,12 +50,12 @@
           <th data-resizable-column-id="name">Feature Name</th>
           <th data-resizable-column-id="customer">Customer</th>
           <th data-resizable-column-id="priority">Priority</th>
-          <!--th data-resizable-column-id="milestone">Milestone</th-->
           <th data-resizable-column-id="phase">Phase</th>
           <th data-resizable-column-id="risk">Risk</th>
           <th data-resizable-column-id="links">Links</th>
           <th data-resizable-column-id="action">Actions</th>
           <th data-resizable-column-id="action">Text2 Updated</th>
+          <th data-resizable-column-id="apm">APM</th>
         </tr>
       </thead>
       <tbody>
@@ -67,7 +67,6 @@
             <td>{{ f.name|safe }}</td>
             <td>{{ f.customer }}</td>
             <td>{{ f.priority|floatformat:"0g" }}</td>
-            <!--td>{{ f.milestone }}</td-->
 
             {% if f.phase == 'Testing' and f.rep_link|startswith:"http" %}
               <td><a href="{{ f.rep_link }}"  target="_blank">{{ f.phase }}</a></td>
@@ -85,6 +84,9 @@
             <td>
               <a href="{% url 'fotd:backlog' f.id %}" title="Backlog">
                 <img src="{% static 'pix/jira.png' %}" alt="Backlog" width="32" height="32">
+              </a>
+              <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ f.id }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">
+                <img src="{% static 'pix/gantt.svg' %}" alt="Structure" width="32" height="32">
               </a>&nbsp;
               <a href="{% url 'fotd:fot' f.id %}" title="FOT">
                 <img src="{% static 'pix/team.png' %}" alt="FOT" width="32" height="32">
@@ -103,6 +105,7 @@
               {% endif %}
             </td>
             <td>{{ f.text2_date | roughtime_since }}</td>
+            <td>{{ f.apm }}</td>
           </tr>
         {% empty %}
           <tr>
