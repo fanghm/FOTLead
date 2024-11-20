@@ -21,7 +21,11 @@ def issue_form(request, pk=None):
         if form.is_valid():
             issue = form.save(commit=False)
             issue.save()
-            return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))
+
+            if issue.status == "closed" or issue.status == "discarded":
+                return redirect(reverse("tracker:issue_list"))
+            else:
+                return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))
     else:
         form = IssueForm(instance=issue, user=request.user)
 
