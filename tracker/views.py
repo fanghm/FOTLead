@@ -22,7 +22,7 @@ def issue_form(request, pk=None):
             issue = form.save(commit=False)
             issue.save()
 
-            if issue.status == "closed" or issue.status == "discarded":
+            if issue.status in ["closed", "discarded"]:
                 return redirect(reverse("tracker:issue_list"))
             else:
                 return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))
@@ -47,7 +47,7 @@ class IssueListView(generic.ListView):
         closed_issues = []
 
         for issue in issues:
-            if issue.status == "closed" or issue.status == "discarded":
+            if issue.status in ["closed", "discarded"]:
                 closed_issues.append(issue)
             else:
                 type = issue.get_type_display()
@@ -94,8 +94,11 @@ def issue_detail(request, pk):
         if comment_form.is_valid():
             comment_form.save()
 
-            # print("redirect after comment save")
-            return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))
+            new_status = comment_form.cleaned_data.get('new_status')
+            if new_status in ["closed", "discarded"]:
+                return redirect(reverse("tracker:issue_list"))
+            else:
+                return redirect(reverse("tracker:issue_detail", args=(issue.pk,)))
         else:
             print(f"Invalid comment_form: {comment_form.errors}")
     else:
