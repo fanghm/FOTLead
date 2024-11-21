@@ -23,6 +23,18 @@
 {% block content %}
     <h2>Link List</h2>
 
+    <div>
+        <form id="search-form" method="get">
+            <input type="text" name="search" id="search-input" placeholder="Search a link" value="{{ search }}">
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
+    <div id="search-results">
+    </div>
+
+    <div class="divider"></div>
+
     <!-- A-Z navigation bar -->
     <div class="az-navbar">
         Index:
@@ -47,4 +59,45 @@
             </ul>
         </div>
     {% endfor %}
+{% endblock %}
+
+{% block bottom %}
+<script>
+    $(document).ready(function() {
+        $('#search-form').on('submit', function(event) {
+            event.preventDefault();
+
+            var query = $('#search-input').val();
+
+            $.ajax({
+                url: '{% url 'link:link_search' %}',
+                type: 'GET',
+                data: {
+                    q: query
+                },
+                success: function(response) {
+                    $('#search-results').empty();
+
+                    if (response.search_results.length > 0) {
+                        var resultsList = $('<ul></ul>');
+                        $.each(response.search_results, function(index, link) {
+                            var listItem = `
+                                <li>
+                                    <a href="${link.url}" target="_blank">${link.name}</a>
+                                </li>
+                            `;
+                            resultsList.append(listItem);
+                        });
+                        $('#search-results').append(resultsList);
+                    } else {
+                        $('#search-results').append('<p>No results found for "' + query + '"</p>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Search request failed:', status, error);
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

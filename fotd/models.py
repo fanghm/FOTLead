@@ -125,7 +125,7 @@ class Feature(models.Model):
     )
 
     risk_status = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
-    risk_summary = models.CharField(max_length=50, blank=True)
+    risk_summary = models.CharField(max_length=128, blank=True)
     text2_desc = models.CharField(max_length=512, blank=True)
     text2_date = models.DateField(default=datetime.date.today)
 

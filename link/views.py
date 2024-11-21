@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -82,3 +84,25 @@ def link_edit(request, pk):
     else:
         form = LinkForm(instance=link)
     return render(request, "link_edit.html", {"form": form, 'link': link})
+
+
+def link_search(request):
+    query = request.GET.get('q', '')
+
+    if query:
+        search_results = (
+            Link.objects.filter(
+                Q(name__icontains=query)
+                | Q(url__icontains=query)
+                | Q(domain__icontains=query)
+                | Q(tags__name__icontains=query)
+                | Q(description__icontains=query)
+            )
+            .filter(status="approved")
+            .distinct()
+        )
+    else:
+        search_results = Link.objects.none()
+
+    results = [{'name': link.name, 'url': link.url} for link in search_results]
+    return JsonResponse({'search_results': results, 'query': query})
