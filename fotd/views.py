@@ -284,6 +284,8 @@ def check_exec_issue(result, current_fb):
 
 def backlog(request, fid):
     first_query = False
+    max_results = 20
+
     query = BacklogQuery.objects.filter(feature__id=fid).first()
     if query is None:
         first_query = True
@@ -299,6 +301,8 @@ def backlog(request, fid):
         total_spent = query.total_spent
         total_remaining = query.total_remaining
 
+        max_results = len(result) + 10  # for refresh query
+
         # TODO: read endfb_changed_items and new_added_keys from query.changes,
         # after optimization the 'changes' as json format
 
@@ -310,7 +314,7 @@ def backlog(request, fid):
     endfb_changed_items = {}
     if request.GET.get('refresh') or first_query:
         jira_query = True
-        print(f"{fid}: query from JIRA")
+        print(f"{fid}: query from JIRA w/ max_results={max_results}")
         try:
             (
                 result,
@@ -322,7 +326,7 @@ def backlog(request, fid):
                 committed_ratio,
                 total_spent,
                 total_remaining,
-            ) = jira_get_ca_items(fid, query_done)
+            ) = jira_get_ca_items(fid, max_results, query_done)
         except Exception:
             print(f"Failed to make the JIRA query: {traceback.format_exc()}")
             # Django message framework will add the message to the context,

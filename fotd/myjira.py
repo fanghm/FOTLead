@@ -42,7 +42,7 @@ def _get_rep_link(epics, start, end, anchor):
 
 
 # TODO: for items with secondary links, get the actual logged effort and progress info
-def _queryJira(jql_str, field_dict, keys_to_hide, max_results=200, start_at=0):
+def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
     jira = _initJira()
     json_result = jira.search_issues(
         jql_str,
@@ -211,7 +211,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=200, start_at=0):
     )
 
 
-def jira_get_ca_items(fid, feature_done=False):
+def jira_get_ca_items(fid, max_results, feature_done=False):
     """
     CAUTION:
     All the fields in below dict, if not listed in keys_to_hide, will be shown
@@ -269,7 +269,7 @@ def jira_get_ca_items(fid, feature_done=False):
         'AND {status_filter} order by "Item ID"'
     ).format(fid=fid, status_filter=status_filter)
 
-    return _queryJira(jql_str, field_dict, keys_to_hide)
+    return _queryJira(jql_str, field_dict, keys_to_hide, max_results)
 
 
 def jira_get_text2(fid):

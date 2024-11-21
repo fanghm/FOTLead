@@ -14,7 +14,7 @@
 
     <div class="form-group">
       <label for="text2_desc">Text2:</label>
-      <textarea id="text2_desc" data-jira-key="" class="form-control" name="text2_desc" rows="5">{{feature.text2_desc}}</textarea>
+      <textarea id="text2_desc" data-jira-key="{{feature.fusion_id}}" class="form-control" name="text2_desc" rows="5">{{feature.text2_desc}}</textarea>
     </div>
 
     <div class="form-group">
@@ -50,8 +50,8 @@
     </div>
 
     <div class="form-group">
-      <label for="milestone">Milestone:</label>
-      <input class="form-control" type="text" name="milestone" value="{{feature.milestone}}">
+      <label for="labels">Labels:</label>
+      <input class="form-control" type="text" name="labels" value="{{feature.labels}}">
     </div>
 
     <div class="form-group">
@@ -86,8 +86,13 @@
     </div>
 
     <div class="form-group">
-      <label for="fusion_link">JIRA Structure:</label>
-      <input class="form-control" type="text" name="fusion_link" value="{{feature.fusion_link}}">
+      <label for="apm">APM Contact:</label>
+      <input class="form-control" type="text" name="apm" value="{{feature.apm}}">
+    </div>
+
+    <div class="form-group">
+      <label for="fusion_id">Backlog ID:</label>
+      <input class="form-control" type="text" name="fusion_id" value="{{feature.fusion_id}}">
     </div>
 
     <div class="form-group">
@@ -98,11 +103,6 @@
     <div class="form-group">
       <label for="cfam_link">CFAM Link:</label>
       <input class="form-control" type="text" name="cfam_link" value="{{feature.cfam_link}}">
-    </div>
-
-    <div class="form-group">
-      <label for="gantt_link">Gantt Chart:</label>
-      <input class="form-control" type="text" name="gantt_link" value="{{feature.gantt_link}}">
     </div>
 
     <div class="form-group">
