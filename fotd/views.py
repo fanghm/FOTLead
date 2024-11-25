@@ -10,6 +10,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from jira import JIRAError
 
 from .mailer import send_email
 from .models import (
@@ -327,7 +328,12 @@ def backlog(request, fid):
                 total_spent,
                 total_remaining,
             ) = jira_get_ca_items(fid, max_results, query_done)
-        except Exception:
+        except JIRAError as e:
+            error_message = (f"Failed to connect to JIRA: {e}")
+            messages.error(request, error_message)
+            return render(request, 'fotd/error.html')
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
             print(f"Failed to make the JIRA query: {traceback.format_exc()}")
             # Django message framework will add the message to the context,
             # needless to pass it explicitly

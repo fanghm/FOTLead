@@ -282,7 +282,7 @@ def jira_get_text2(fid):
             jql_str, 0, 1, fields=f"{JIRA_TEXT2}, {JIRA_RISK_STATUS}", json_result=True
         )
 
-        print("jira_get_text2 result: " + str(json_result))
+        # print("jira_get_text2 result: " + str(json_result))
         if json_result["total"] == 0:
             return {
                 "status": "error",

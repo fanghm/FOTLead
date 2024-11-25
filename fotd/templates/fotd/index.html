@@ -104,7 +104,7 @@
                 <a href="{% url 'fotd:detail' f.id %}"><span style="font-size: 32px;">&#127915;</span></a>
               {% endif %}
             </td>
-            <td>{{ f.text2_date | roughtime_since }}</td>
+            <td><a href="{% url 'fotd:feature' f.id %}">{{ f.text2_date | roughtime_since }}</a></td>
             <td>{{ f.apm }}</td>
           </tr>
         {% empty %}
