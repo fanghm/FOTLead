@@ -310,10 +310,10 @@ def backlog(request, fid):
         # print(f"{fid}: last query at {query.query_time}: {len(result)} items")
 
     jira_query = False
-    query_done = True if request.GET.get('query_done') else False
+    query_done = 'query_done' in request.GET
     new_added_keys = []
     endfb_changed_items = {}
-    if request.GET.get('refresh') or first_query:
+    if 'refresh' in request.GET or first_query or query_done:
         jira_query = True
         print(f"{fid}: query from JIRA w/ max_results={max_results}")
         try:

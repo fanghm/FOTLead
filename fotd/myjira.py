@@ -263,9 +263,10 @@ def jira_get_ca_items(fid, max_results, feature_done=False):
     status_filter = "status not in (done, obsolete)"
     if feature_done:
         status_filter = "status not in (obsolete)"
+        max_results = 200
 
     jql_str = (
-        '("Feature ID" ~ {fid}) and issuetype = "Competence Area" '
+        '"Feature ID" ~ {fid} and issuetype = "Competence Area" '
         'AND {status_filter} order by "Item ID"'
     ).format(fid=fid, status_filter=status_filter)
 
