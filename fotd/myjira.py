@@ -58,7 +58,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
     end_latest = None
     rfc_ratio = committed_ratio = 0
     rfc_count = committed_count = 0
-    total_spent = total_remaining = 0
+    total_logged = total_remaining = 0
     total_count = json_result["total"]
     print(f"Total count: {total_count}")
 
@@ -90,10 +90,10 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
 
         # calc progress
         if issue_dict["Logged_Effort"]:
-            spent = float(issue_dict["Logged_Effort"])
-            total_spent += spent
+            logged = float(issue_dict["Logged_Effort"])
+            total_logged += logged
         else:
-            spent = 0
+            logged = 0
 
         if issue_dict["Time_Remaining"]:
             remaining = issue_dict["Time_Remaining"]
@@ -101,8 +101,9 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
         else:
             remaining = issue_dict["Time_Remaining"] = 0
 
-        if (spent + remaining) > 0:
-            issue_dict["Progress"] = spent / (spent + remaining) * 100
+        if (logged + remaining) > 0:
+            issue_dict["Total_Effort"] = logged + remaining
+            issue_dict["Progress"] = logged / (logged + remaining) * 100
         else:
             issue_dict["Progress"] = 0
 
@@ -206,7 +207,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
         end_latest,
         rfc_ratio,
         committed_ratio,
-        total_spent,
+        total_logged,
         total_remaining,
     )
 
@@ -219,45 +220,54 @@ def jira_get_ca_items(fid, max_results, feature_done=False):
     """
     field_dict = {
         # 0: Key
-        "Item_ID": "customfield_38702",
-        "Summary": "summary",
+
         # 1-8
         "Competence_Area": "customfield_38690",
         "Activity_Type": "customfield_38750",
         "Assignee": "assignee",
         "Start_FB": "customfield_38694",
         "End_FB": "customfield_38693",
-        "Original_Estimate": "customfield_43292",
+
+        # Original_Estimate (customfield_43292) field is no longer available in JIRA, 
+        # replaced it with calculated field "Total_Effort"
+        "Total_Effort": "customfield_43292",
+
         "Time_Remaining": "customfield_43291",
         "RC_Status": "customfield_38728",
+
         # 9: Progress
         # 10: SI/Sub_Feature
         # 11: EI
         # 12: ReP
+
+        # hidden fields
+        "Item_ID": "customfield_38702",
+        "Summary": "summary",
         "RC_FB": "customfield_43490",
         "FB_Committed_Status": "customfield_38758",  # value
         "Stretch_Goal_Reason": "customfield_43893",  # value
         "Risk_Status": "customfield_38754",  # value
         "Risk_Details": "customfield_38435",
         "Logged_Effort": "customfield_43290",
+        "Release": "customfield_38724",  # value
         "Parent_Id": "customfield_29791",
         "issuelinks": "issuelinks",  # for EI info
-        "Release": "customfield_38724",  # value
     }
 
     keys_to_hide = [
-        "Release",
-        "Parent_Id",
-        "issuelinks",
-        "Assignee_Email",
+        "Assignee_Email",   # retrieve from Assignee field
+
         "Item_ID",
         "Summary",
+        "RC_FB",
         "FB_Committed_Status",
         "Stretch_Goal_Reason",
         "Risk_Status",
         "Risk_Details",
         "Logged_Effort",
-        "RC_FB",
+        "Release",
+        "Parent_Id",
+        "issuelinks",
     ]
 
     status_filter = "status not in (done, obsolete)"
