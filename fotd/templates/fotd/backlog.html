@@ -40,6 +40,10 @@
       font-size: 15px !important;
     }
 
+    .divider {
+      margin: 0 5px 0 5px;
+    }
+
   </style>
   <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
   <link rel="stylesheet" href="https://cdn.datatables.net/2.1.0/css/dataTables.dataTables.css">
@@ -69,17 +73,30 @@
 
 {% block content %}
 <br>
-<div style="display: flex; align-items: baseline; margin-left: 10px;">
-  <h2>{{fid}} Backlog</h2>
-  {% if query_time %}
-  <div>&nbsp;@ {{ query_time|timesince }} ago |</div>
-  {% endif %}
-  &nbsp;<a id="refreshLink" href="#">Refresh</a>&nbsp;|&nbsp;
-  <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open JIRA Structure</a>
+<h2 style="margin-left: 10px;">{{fid}} Backlog</h2>
+
+<div style="display: flex; align-items: center; margin-left: 10px;">
+    {% if query_time %}
+      <div>{{ query_time|timesince }} ago</div>
+      <span class="divider">|</span>
+    {% endif %}
+
+    <a id="refreshLink" href="#">Refresh</a>
+    <span class="divider">|</span>
+
+    <label style="margin: 5px 2px; color: blue;">
+        <input type="checkbox" id="showDoneItems"> Show done items
+    </label>
+    <span class="divider">||</span>
+
+    <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open JIRA Structure</a>
 </div>
+
 {% if not result %}
-  <p style="color: red; font-weight: bold;">Feature backlog not found, pls make sure the feature ID is correct.</p>
-  <p>If the feature already done, click <a id="queryDoneLink" href="#">here</a>.</p>
+  <p style="color: red; margin:0 10px">
+    Oops! Feature backlog not found, pls make sure the feature ID &lt;{{fid}}&gt; is correct.<br>
+    If the feature is already done, click the above checkbox to show done items.
+  </p>
 {% else %}
 
 <div class="container-fluid">
@@ -246,6 +263,21 @@
 
 <script>
 $(document).ready(function() {
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('query_done')) {
+      $('#showDoneItems').prop('checked', true);
+  }
+
+  $('#showDoneItems').change(function() {
+      var queryDoneUrl = new URL(window.location.href);
+      if (this.checked) {
+          queryDoneUrl.searchParams.set('query_done', '');
+      } else {
+          queryDoneUrl.searchParams.delete('query_done');
+      }
+      window.location.href = queryDoneUrl.toString();
+  });
+
   function updateQueryUrls() {
       var currentUrl = new URL(window.location.href);
       var refreshUrl = new URL(currentUrl);
