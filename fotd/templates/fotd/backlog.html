@@ -68,7 +68,8 @@
 {% endblock %}
 
 {% block nav_link %}
-|&nbsp;<a style="text-align: right;" href="{% url 'fotd:detail' fid %}">{{fid}}</a>
+<span class="divider">|</span>
+<a style="text-align: right;" href="{% url 'fotd:detail' fid %}">{{fid}}</a>
 {% endblock %}
 
 {% block content %}
@@ -89,7 +90,7 @@
     </label>
     <span class="divider">||</span>
 
-    <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open JIRA Structure</a>
+    <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open in JIRA</a>
 </div>
 
 {% if not result %}
@@ -103,20 +104,26 @@
   <table id='backlog-table' class="table stripe hover"><!--table-striped stripe -->
     <thead>
       <tr>
+        <th rowspan="2"></th>
+
         {% for field_name in display_fields %}
           <th rowspan="2">{{ field_name|replace:"_, " }}</th>
         {% endfor %}
           <th colspan="{{display_sprints|length}}" data-dt-order="disable">Plan Visualization</th>
       </tr>
+
       <tr>
         {% for fb in display_sprints %}
           <th data-dt-order="disable"> {{ fb }} </th>
         {% endfor %}
       </tr>
     </thead>
+
     <tbody>
       {% for item in result %}
         <tr>
+          <td class="dt-control"></td>
+
           {% for field_name, field_value in item.items %}
             {% if field_name not in display_fields %}
               {# dont show #}
@@ -305,6 +312,7 @@ $(document).ready(function() {
     }
   }
 
+  // for export
   var exportFormatter = {
     format: {
         body: function (data, row, column, node) {
@@ -320,24 +328,28 @@ $(document).ready(function() {
   };
 
   // Get the number of columns
-  var numColumns = $('.table thead th').length - 1; // -1 because of the colspan th
+  // -1 because of the colspan th is not a real column
+  var numColumns = $('#backlog-table thead th').length - 1;
 
   // Generate an array of column indexes from 10 to the last column
-  var nonSortableColumns = Array.from({length: numColumns - 10}, (_, i) => i + 10);
+  var nonSortableColumns = Array.from({length: numColumns - 11}, (_, i) => i + 11);
+  //console.log('Number of columns:', numColumns);
+  //console.log('Non-sortable columns:', nonSortableColumns);
 
   // add <tfoot> tag with same number of <th></th> as the table columns
   var tfoot = '<tfoot>';
   for (var i=0; i<numColumns; i++)
     tfoot += '<th></th>';
-  tfoot += '</tfoot>';
-  $(".table").append(tfoot);
 
-  var table = $('.table').DataTable({
+  tfoot += '</tfoot>';
+  $("#backlog-table").append(tfoot);
+
+  var table = $('#backlog-table').DataTable({
     ordering: true,
-    order: [[5, "asc"],[2, "asc"]],
+    order: [[6, "asc"], [3, "asc"]],
     responsive: true,
     //orderFixed: [1, 'asc'],
-    rowGroup: { enable: false, dataSrc: 10 },
+    rowGroup: { enable: false, dataSrc: 11 },
     //"stateSave": true,
     "scrollX": true,
     "sScrollXInner": "100%",  // if scrollX is true without this line, table body and header might not align
@@ -345,6 +357,7 @@ $(document).ready(function() {
     "pageLength": -1,
     //"lengthChange": false, // dont show "Show xx entries" by default
     "pagingType": "simple", // use simple pagination
+
     layout: {
         topStart: {
             buttons: [
@@ -361,25 +374,25 @@ $(document).ready(function() {
                     {
                         text: 'System Item',
                         action: function (e, dt, node, config) {
-                          _group_by(dt, 10);
+                          _group_by(dt, 11);
                         }
                     },
                     {
                         text: 'Entity Item',
                         action: function (e, dt, node, config) {
-                          _group_by(dt, 11);
+                          _group_by(dt, 12);
                         }
                     },
                     {
                         text: 'Activity Type',
                         action: function (e, dt, node, config) {
-                          _group_by(dt, 2);
+                          _group_by(dt, 3);
                         }
                     },
                     {
                         text: 'Competence Area',
                         action: function (e, dt, node, config) {
-                          _group_by(dt, 1);
+                          _group_by(dt, 2);
                         }
                     },
                     {
@@ -395,7 +408,7 @@ $(document).ready(function() {
                   autoClose: true,
                   text: 'Output',
                   buttons: [
-                      'copy',
+                      'copy', // TODO: hide footer
                       {
                           extend: 'excelHtml5',
                           filename: '{{fid}}_backlog_{{ date|date:"Ymd" }}',
@@ -420,12 +433,6 @@ $(document).ready(function() {
                               },
                           }
                       },
-                      {
-                          popoverTitle: 'Visibility control',
-                          extend: 'colvis',
-                          collectionLayout: 'two-column',
-                          exclude: [0, 10],
-                      }
                   ]
               },
               {
@@ -433,50 +440,56 @@ $(document).ready(function() {
                 extend: 'collection',
                 autoClose: true,
                 buttons: [
+                    // {
+                    //     text: 'Toggle 1-2',
+                    //     action: function ( e, dt, node, config ) {
+                    //         dt.column( 1 ).visible( ! dt.column( 1 ).visible() );
+                    //         dt.column( 2 ).visible( ! dt.column( 2 ).visible() );
+                    //         this.active(!this.active());
+                    //     }
+                    // },
                     {
-                        text: 'Toggle 1-2',
-                        action: function ( e, dt, node, config ) {
-                            dt.column( 1 ).visible( ! dt.column( 1 ).visible() );
-                            dt.column( 2 ).visible( ! dt.column( 2 ).visible() );
-                            this.active(!this.active());
-                        }
-                    },
-                    {
-                        text: 'Plan Visualization',
+                        text: 'Classic View',
                         action: function ( e, dt, node, config ) {
                           for (col of nonSortableColumns)
                             dt.column(col).visible( !dt.column(col).visible() );
 
-                          dt.column(9).visible(false); // hide progress column
-                          dt.column(10).visible(false); // hide sub-feature column
-                          dt.column(11).visible(false); // hide EI column
+                          dt.column(0).visible( ! dt.column( 0 ).visible() );   // hide child rows
+                          dt.column(9).visible( ! dt.column( 9 ).visible() );   // hide RC Status column
+                          dt.column(10).visible( ! dt.column( 10 ).visible() ); // hide progress column
+                          dt.column(11).visible(false); // hide sub-feature column
+                          dt.column(12).visible(false); // hide EI column
+                          dt.column(13).visible( ! dt.column( 13 ).visible() ); // hide ReP column
                           this.active(!this.active());
                         }
                     },
+                    {
+                        popoverTitle: 'Visibility control',
+                        extend: 'colvis',
+                        collectionLayout: 'two-column',
+                        exclude: [1, 11],
+                    }
                 ]
             },
             ]
         }
     },
+
     "columnDefs": [
       {
-        target: 10,  // hide the Sub_Feature column, required for row grouping by sub-features
-        visible: false
-      },
-      {
-        target: 11,  // hide the EI column, required for row grouping by EI
-        visible: false
-      },
-      {
-        target: 12,  // hide the ReP column
+        targets: [11, 12, 13],  // hide the SI/EI/Rep columns
         visible: false
       },
 
       // make the fb columns not sortable
       //{ "orderable": false, "targets": nonSortableColumns },
 
-      { "className": "center-align", "targets": [4,5,6,7] }, // zero-based col index
-
+      // center the start/end fb and totol/remaining effort columns
+      // TODO: not working somehow
+      {
+        "targets": [5,6,7,8],
+        "className": "center-align"
+      },
     ],
 
     // "drawCallback": function(settings) {
@@ -505,31 +518,39 @@ $(document).ready(function() {
       };
 
       // Total over all pages
-      total_effort = api.column(6).data().reduce((a, b) => intVal(a) + intVal(b), 0);
-      total_remaining = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+      total_effort = api.column(7).data().reduce((a, b) => intVal(a) + intVal(b), 0);
+      total_remaining = api.column(8).data().reduce((a, b) => intVal(a) + intVal(b), 0);
 
       // count the number of unique Competence Areas
-      let caValues = api.column(1).data().toArray();
+      let caValues = api.column(2).data().toArray();
       let uniqueCaValues = new Set(caValues);
       let uniqueCaCount = uniqueCaValues.size;
 
       // Calculate the percentage of rows with "Ready for Commitment" in the RC_Status column
-      let totalRows = api.column(8).data().length;
-      let rfcCount = api.column(8).data().filter(text => text === "Ready for Commitment").length;
-      let rfcOrCommittedCount = api.column(8).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
+      let totalRows = api.column(9).data().length;
+      let rfcCount = api.column(9).data().filter(text => text === "Ready for Commitment").length;
+      let rfcOrCommittedCount = api.column(9).data().filter(text => text === "Ready for Commitment" || text.startsWith("Committed")).length;
       let rfcPercentage = (rfcOrCommittedCount / totalRows * 100).toFixed(0);
       let donePercentage = ((total_effort - total_remaining) / total_effort * 100).toFixed(1);
 
       // Update footer
-      api.column(1).footer().innerHTML = `${uniqueCaCount} Areas`;
-      api.column(3).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
-      api.column(6).footer().innerHTML = `${total_effort} Hrs`;
-      api.column(7).footer().innerHTML = `${total_remaining} Hrs`;
-      api.column(8).footer().innerHTML = `${rfcPercentage}% ` + (rfcCount > 0 ? 'RfC' : 'Committed');
-      api.column(9).footer().innerHTML = `${donePercentage}% Done`;
+      api.column(2).footer().innerHTML = `${uniqueCaCount} Areas`;
+      api.column(4).footer().innerHTML = '<button id="copyToClipboard">Copy All Names</button>';
+      api.column(7).footer().innerHTML = `${total_effort} Hrs`;
+      api.column(8).footer().innerHTML = `${total_remaining} Hrs`;
+      api.column(9).footer().innerHTML = `${rfcPercentage}% ` + (rfcCount > 0 ? 'RfC' : 'Committed');
+      api.column(10).footer().innerHTML = `${donePercentage}% Done`;
     },
 
   });
+
+  // Formatting function for row details - modify as you need
+  function format(d) {
+      // `d` is the original data object for the row
+      return (
+          'child data'
+      );
+  }
 
   // row grouping: change the fixed ordering when the data source is updated
   table.on('rowgroup-datasrc', function (e, dt, val) {
@@ -541,7 +562,7 @@ $(document).ready(function() {
 
   // Use event delegation to catch the click event on the dynamically added button
   $('body').on('click', '#copyToClipboard', function() {
-    var columnData = table.column(3).nodes().to$()
+    var columnData = table.column(4).nodes().to$()
         .find('.hidden-assignee-for-copy')
         .map(function() {
             return $(this).text();
@@ -561,6 +582,21 @@ $(document).ready(function() {
     });
   });
 
+  // Add event listener for opening and closing details
+  $('#backlog-table').on('click', 'td.dt-control', function (e) {
+      console.log("opening row detail")
+      let tr = e.target.closest('tr');
+      let row = table.row(tr);
+  
+      if (row.child.isShown()) {
+          // This row is already open - close it
+          row.child.hide();
+      }
+      else {
+          // Open this row
+          row.child(format(row.data())).show();
+      }
+  });
   const REQ_TYPE_PLANNING = "Planning";
   const REQ_TYPE_RFC = "RfC";
   function _send_mail_req(req_type, fid, area, item_keys, first_name, apo_email) {

@@ -113,9 +113,9 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
         tokens = issue_dict["Item_ID"].split("-", 3)
         if len(tokens) >= 3:
             subfeatures.add(tokens[2])
-            issue_dict["Sub_Feature"] = "-".join(tokens[:3])
+            issue_dict["System_Item"] = "-".join(tokens[:3])
         else:
-            issue_dict["Sub_Feature"] = "Unknown"
+            issue_dict["System_Item"] = "Unknown"
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
 
         # Get EI from issue link
@@ -126,7 +126,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
             and issue_dict["End_FB"]
         )
 
-        issue_dict["EI"] = issue_dict["ReP"] = None
+        issue_dict["Entity_Item"] = issue_dict["ReP"] = None
         if "issuelinks" not in issue["fields"]:
             print(f"Exception: no issue links for {issue['key']}!")
         else:
@@ -144,10 +144,10 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
                             )
                         )
 
-                    issue_dict["EI"] = "[{}] {}".format(
+                    issue_dict["Entity_Item"] = "[{}] {}".format(
                         issue_dict["Release"], link["inwardIssue"]["fields"]["summary"]
                     )
-                    # print(f"SI: {issue_dict['Sub_Feature']}, EI: {issue_dict['EI']}")
+                    # print(f"SI: {issue_dict['System_Item']}, EI: {issue_dict['Entity_Item']}")
 
                 # child/epics
                 elif (
@@ -236,8 +236,8 @@ def jira_get_ca_items(fid, max_results, feature_done=False):
         "RC_Status": "customfield_38728",
 
         # 9: Progress
-        # 10: SI/Sub_Feature
-        # 11: EI
+        # 10: SI/System_Item
+        # 11: EI/Entity_Item
         # 12: ReP
 
         # hidden fields
@@ -251,7 +251,7 @@ def jira_get_ca_items(fid, max_results, feature_done=False):
         "Logged_Effort": "customfield_43290",
         "Release": "customfield_38724",  # value
         "Parent_Id": "customfield_29791",
-        "issuelinks": "issuelinks",  # for EI info
+        "issuelinks": "issuelinks",  # for Entity_Item info
     }
 
     keys_to_hide = [
