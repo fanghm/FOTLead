@@ -44,6 +44,15 @@
       margin: 0 5px 0 5px;
     }
 
+    .tight-table {
+        font-size: 12px; /* Smaller font size */
+        border-collapse: collapse; /* Remove space between table cells */
+        margin-left: 40px;
+    }
+    .tight-table th, .tight-table td {
+        padding: 4px; /* Smaller padding */
+        border: 1px solid #ddd; /* Border for table cells */
+    }
   </style>
   <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
   <link rel="stylesheet" href="https://cdn.datatables.net/2.1.0/css/dataTables.dataTables.css">
@@ -93,7 +102,7 @@
     <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open in JIRA</a>
 </div>
 
-{% if not result %}
+{% if not item_list %}
   <p style="color: red; margin:0 10px">
     Oops! Feature backlog not found, pls make sure the feature ID &lt;{{fid}}&gt; is correct.<br>
     If the feature is already done, click the above checkbox to show done items.
@@ -120,8 +129,8 @@
     </thead>
 
     <tbody>
-      {% for item in result %}
-        <tr>
+      {% for item in item_list %}
+        <tr id="{{item.Key}}">
           <td class="dt-control"></td>
 
           {% for field_name, field_value in item.items %}
@@ -544,14 +553,6 @@ $(document).ready(function() {
 
   });
 
-  // Formatting function for row details - modify as you need
-  function format(d) {
-      // `d` is the original data object for the row
-      return (
-          'child data'
-      );
-  }
-
   // row grouping: change the fixed ordering when the data source is updated
   table.on('rowgroup-datasrc', function (e, dt, val) {
       table.order.fixed({ pre: [[val, 'asc']] }).draw();
@@ -582,21 +583,105 @@ $(document).ready(function() {
     });
   });
 
+  function escapeHtml(text) {
+    if (!text) return text;
+    return text.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+  }
+
+  // Formatting function for row details - modify as you need
+  function format(key) {
+      // console.log('child data:', key);
+      // console.log("{{ item_links|escapejs }}");
+      
+      var item_links = JSON.parse("{{ item_links|escapejs }}");
+      if (item_links.hasOwnProperty(key)) {
+          var links = item_links[key];
+          var link_prefix = "https://jiradc.ext.net.nokia.com/browse/";
+
+          // if links is empty, return directly
+          if (links.length === 0) {
+              return '<ul><li>Epic item not yet created</li></ul>';
+          }
+
+          var link_details = links.map(link => {
+              // Calculate Total_Effort
+              var total_effort = (link.Logged_Effort || 0) + (link.Time_Remaining || 0);
+
+              // Change Status to "Delayed" if End_FB > RC_FB
+              var status = link.End_FB > link.RC_FB ? "Delayed" : link.Status;
+
+              // Concatenate the last four fields into a "Comment" column
+              var comment = [link.Team, link.Risk_Status, link.FB_Committed_Status, link.TC_Number]
+                  .filter(field => field && field.trim() !== "")
+                  .join(", ");
+
+              return `<tr>
+                          <td>${link.Relationship}</td>
+                          <td>${link.Item_Type}</td>
+                          <td><a href="${link_prefix}${link.Key}" title="${escapeHtml(link.Summary)}" target="_blank">${link.Key}</a></td>
+                          <td>${status}</td>
+                          <td>${link.Assignee}</td>
+                          <td>${link.Start_FB}</td>
+                          <td>${link.End_FB}</td>
+                          <td>${total_effort}</td>
+                         <td>${link.Time_Remaining !== undefined ? link.Time_Remaining : ''}</td>
+                          <td>${comment}</td>
+                      </tr>`;
+          });
+
+          return `<table class="tight-table">
+                      <thead>
+                          <tr>
+                              <th></th>
+                              <th>Type</th>
+                              <th>Key</th>
+                              <th>Status</th>
+                              <th>Assignee</th>
+                              <th>Start FB</th>
+                              <th>End FB</th>
+                              <th>Total Effort</th>
+                              <th>Time Remaining</th>
+                              <th>Comment</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          ${link_details.join('')}
+                      </tbody>
+                  </table>`;
+      } else {
+          console.log('Key not found from item_links:', key);
+          return '&#9;Epic item not yet created!';
+      }
+  }
+
+  // Variable to keep track of the currently opened row
+  var currentlyOpenedRow = null;
+
   // Add event listener for opening and closing details
   $('#backlog-table').on('click', 'td.dt-control', function (e) {
-      console.log("opening row detail")
       let tr = e.target.closest('tr');
       let row = table.row(tr);
-  
+
       if (row.child.isShown()) {
           // This row is already open - close it
           row.child.hide();
-      }
-      else {
+          currentlyOpenedRow = null;
+      } else {
+          // Close the previously opened row if it exists
+          if (currentlyOpenedRow && currentlyOpenedRow.child.isShown()) {
+              currentlyOpenedRow.child.hide();
+          }
+
           // Open this row
-          row.child(format(row.data())).show();
+          row.child(format(tr.id)).show();
+          currentlyOpenedRow = row;
       }
   });
+
   const REQ_TYPE_PLANNING = "Planning";
   const REQ_TYPE_RFC = "RfC";
   function _send_mail_req(req_type, fid, area, item_keys, first_name, apo_email) {

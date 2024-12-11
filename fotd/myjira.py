@@ -10,7 +10,10 @@ from .globals import _get_fb_end_date, _get_fb_start_date
 
 JIRA_TEXT2 = "customfield_38727"
 JIRA_RISK_STATUS = "customfield_38754"
+
 JIRA_SERVER_URL = "https://jiradc.ext.net.nokia.com"
+JIRA_AUTH_CREDENTIAL = (settings.AUTH_USERNAME, settings.AUTH_PASSWORD)
+
 TEXT2_TEMPLATE = """A) Update Version: [24.11.17] <$username>\n\n
 B) Risk Situation and Management:
 N/A\n
@@ -18,9 +21,8 @@ C) Feature Blocking Prontos: (F-level)
 N/A"""
 
 
-def _initJira():
-    credentials = (settings.AUTH_USERNAME, settings.AUTH_PASSWORD)
-    return JIRA(server=JIRA_SERVER_URL, basic_auth=credentials)
+def _initJira():    
+    return JIRA(server=JIRA_SERVER_URL, basic_auth=JIRA_AUTH_CREDENTIAL)
 
 
 def _get_rep_link(epics, start, end, anchor):
@@ -39,7 +41,170 @@ def _get_rep_link(epics, start, end, anchor):
 
     url = "https://rep-portal.ext.net.nokia.com/charts/tep/?%s" % safe_str
     return '<a href="%s" target="_blank">%s</a>' % (url, anchor)
+    # return url
 
+def extract_issue_fields(issue, field_dict, save_none_value=True):
+    issue_dict = {"Key": issue["key"]}
+
+    for field_name, custom_name in field_dict.items():
+        if custom_name in issue["fields"]:
+            value = issue["fields"][custom_name]
+        else:
+            value = None
+
+        if not value:
+            if save_none_value:
+                issue_dict[field_name] = None
+            continue
+        elif field_name in ("Item_Type", "Team", "Status"):
+            issue_dict[field_name] = value["name"]
+        elif field_name in (
+            "Competence_Area",
+            "Activity_Type",
+            "RC_Status",
+            "RC_FB",
+            "FB_Committed_Status",
+            "Stretch_Goal_Reason",
+            "Risk_Status",
+        ):
+            issue_dict[field_name] = value["value"]
+        elif field_name in ("Release"):
+            issue_dict[field_name] = value[0]["value"]
+        elif field_name in ("Assignee"):
+            issue_dict[field_name] = value["displayName"]
+            issue_dict["Assignee_Email"] = value["emailAddress"]
+        else:
+            issue_dict[field_name] = value
+
+    return issue_dict
+
+def calculate_progress(issue_dict, total_logged, total_remaining):
+    logged_effort = issue_dict.get("Logged_Effort")
+    if not logged_effort:
+        logged_effort = 0
+    logged = float(logged_effort)
+    total_logged += logged
+
+    time_remaining = issue_dict.get("Time_Remaining")
+    if not time_remaining:
+        time_remaining = 0
+    remaining = float(time_remaining)
+    total_remaining += remaining
+
+    issue_dict["Total_Effort"] = logged + remaining
+    issue_dict["Progress"] = (logged / issue_dict["Total_Effort"] * 100) if issue_dict["Total_Effort"] > 0 else 0
+
+    return total_logged, total_remaining
+
+import requests
+
+"""
+return a link's field dict without "Key" field
+"""
+def fetch_json_data(url, auth):
+    epic_field_dict = {
+        "Item_Type": "issuetype", # name
+        # "Item_ID": "customfield_38702",
+        "Summary": "summary", # too much text
+        "Status": "status", # name
+        "Assignee": "assignee", # displayName, emailAddress
+        "Start_FB": "customfield_38694",
+        "End_FB": "customfield_38693",
+        "Logged_Effort": "customfield_43290",
+        "Time_Remaining": "customfield_43291",
+
+        # Useful CA/EI fields
+        "RC_FB": "customfield_43490", # value
+        "FB_Committed_Status": "customfield_38758", # value
+        "Risk_Status": "customfield_38754", # value
+
+        # Useful Epic fields
+        "Team": "customfield_29790", # name
+        "Labels": "labels", # test case number
+    }
+
+    response = requests.get(url, auth=auth)
+    if response.status_code == 200:
+        json_issue = response.json()
+        print(f"{json_issue['fields']['issuetype']['name']}: {json_issue['key']}")
+        return extract_issue_fields(json_issue, epic_field_dict, False)
+    else:
+        print(f"Failed to access {url}, status code: {response.status_code}")
+        return {}
+
+import re
+
+def get_testcase_number(labels):
+    for label in labels:
+        match = re.match(r'TC#(\d+)#', label)
+        if match:
+            return match.group(1)
+    return None
+
+def process_issue_links(issue, issue_dict, is_planned_test_item):
+    """
+    get the linked issue's fields and store them in a list
+    link_list = [
+        {"Key", "FPB-xxx|FCA_xxx|..."},
+        {"Item_Type", "Epic|CA"},
+        ...
+    ]
+    """
+
+    link_list = []
+    issue_dict["epics"] = []
+    if "issuelinks" not in issue["fields"]:
+        print(f"Exception: no issue links for {issue['key']}!")
+        return
+
+    print(f"\nProcessing links for {issue['key']}")
+    for link in issue["fields"]["issuelinks"]:
+        link_dict = {}
+
+        if (
+            "inwardIssue" in link
+            and link["inwardIssue"]["fields"]["status"]["name"] not in ("Done", "Obsolete")
+        ):
+            if link["inwardIssue"]["fields"]["issuetype"]["name"] == "Entity Item":
+                issue_dict["Entity_Item"] = "[{}] {}".format(
+                    issue_dict["Release"], link["inwardIssue"]["fields"]["summary"]
+                )
+                continue    # skip EI link
+
+            # print(f"Found CA link: {link['inwardIssue']['self']}")
+            link_dict = fetch_json_data(
+                link["inwardIssue"]["self"],
+                JIRA_AUTH_CREDENTIAL
+            )
+
+            link_dict["Relationship"] = link["type"]["inward"]
+            link_list.append(link_dict)
+
+        # child/epics
+        elif (
+            "outwardIssue" in link
+            and link["outwardIssue"]["fields"]["status"]["name"] not in ("Done", "Obsolete")
+        ):
+            link_dict = fetch_json_data(
+                link["outwardIssue"]["self"],
+                JIRA_AUTH_CREDENTIAL
+            )
+
+            if is_planned_test_item and link_dict["Item_Type"]  == 'Epic':
+                link_dict["TC_Number"] = get_testcase_number(link_dict.get("Labels", []))
+                issue_dict["epics"].append(link["outwardIssue"]["key"])
+
+            # remove the 'labels' field from link_dict
+            link_dict.pop("Labels", None)
+            # link_dict.pop("Item_ID", None)
+            # link_dict.pop("Summary", None)
+
+            link_dict["Relationship"] = link["type"]["outward"]
+            link_list.append(link_dict)
+
+    issue_dict.pop("issuelinks", None)  # too much text
+    issue_dict["links"] = link_list
+    return
 
 # TODO: for items with secondary links, get the actual logged effort and progress info
 def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
@@ -63,53 +228,15 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
     print(f"Total count: {total_count}")
 
     for issue in json_result["issues"]:
-        # the first field is always the key
-        issue_dict = {"Key": issue["key"]}
-        for field_name, custom_name in field_dict.items():
-            value = issue["fields"][custom_name]
-
-            if not value:
-                issue_dict[field_name] = None
-            elif field_name in (
-                "Competence_Area",
-                "Activity_Type",
-                "RC_Status",
-                "RC_FB",
-                "FB_Committed_Status",
-                "Stretch_Goal_Reason",
-                "Risk_Status",
-            ):
-                issue_dict[field_name] = value["value"]
-            elif field_name in ("Release"):
-                issue_dict[field_name] = value[0]["value"]
-            elif field_name in ("Assignee"):
-                issue_dict[field_name] = value["displayName"]
-                issue_dict["Assignee_Email"] = value["emailAddress"]
-            else:
-                issue_dict[field_name] = value
-
-        # calc progress
-        if issue_dict["Logged_Effort"]:
-            logged = float(issue_dict["Logged_Effort"])
-            total_logged += logged
-        else:
-            logged = 0
-
-        if issue_dict["Time_Remaining"]:
-            remaining = issue_dict["Time_Remaining"]
-            total_remaining += remaining
-        else:
-            remaining = issue_dict["Time_Remaining"] = 0
-
-        if (logged + remaining) > 0:
-            issue_dict["Total_Effort"] = logged + remaining
-            issue_dict["Progress"] = logged / (logged + remaining) * 100
-        else:
-            issue_dict["Progress"] = 0
-
+        issue_dict = extract_issue_fields(issue, field_dict)
         result.append(issue_dict)
 
-        # get sub-feature from Item_ID like 'CB011098-SR-A-CP2_RAN_SysSpec'
+        # calc progress and total logged/remaining efforts for statistics
+        total_logged, total_remaining = calculate_progress(
+            issue_dict, total_logged, total_remaining
+        )
+
+        # get SI ID from CA's Item_ID like 'CB011098-SR-A-CP2_RAN_SysSpec'
         tokens = issue_dict["Item_ID"].split("-", 3)
         if len(tokens) >= 3:
             subfeatures.add(tokens[2])
@@ -119,56 +246,21 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
 
         # Get EI from issue link
-        epics = []
-        is_test_planned = (
+        is_planned_test_item = (
             issue_dict["Activity_Type"] in ["System Testing", "Entity Testing"]
             and issue_dict["Start_FB"]
             and issue_dict["End_FB"]
         )
 
         issue_dict["Entity_Item"] = issue_dict["ReP"] = None
-        if "issuelinks" not in issue["fields"]:
-            print(f"Exception: no issue links for {issue['key']}!")
-        else:
-            for link in issue["fields"]["issuelinks"]:
-                if "inwardIssue" in link:
-                    # just to check if inwardIssue is always the parent, seems not
-                    # can be 'cloned to' link
-                    if link["inwardIssue"]["key"] != issue_dict["Parent_Id"]:
-                        print(
-                            "%s: inwardIssue %s is not for its parent %s"
-                            % (
-                                issue["key"],
-                                link["inwardIssue"]["key"],
-                                issue_dict["Parent_Id"],
-                            )
-                        )
-
-                    issue_dict["Entity_Item"] = "[{}] {}".format(
-                        issue_dict["Release"], link["inwardIssue"]["fields"]["summary"]
-                    )
-                    # print(f"SI: {issue_dict['System_Item']}, EI: {issue_dict['Entity_Item']}")
-
-                # child/epics
-                elif (
-                    is_test_planned
-                    and "outwardIssue" in link
-                    and link["outwardIssue"]["fields"]["status"]["name"] != "Obsolete"
-                ):
-                    # link['outwardIssue']['fields']['issuetype']['name'] == 'Epic'
-                    print(
-                        "Found ST/ET %s: %s"
-                        % (
-                            link["outwardIssue"]["fields"]["issuetype"]["name"],
-                            link["outwardIssue"]["key"],
-                        )
-                    )
-                    epics.append(link["outwardIssue"]["key"])
-
-        if is_test_planned and len(epics) > 0:
+        process_issue_links(issue, issue_dict, is_planned_test_item)
+            
+        epics = issue_dict.get("epics", [])
+        if is_planned_test_item and len(epics) > 0:
             issue_dict["ReP"] = _get_rep_link(
                 epics, issue_dict["Start_FB"], issue_dict["End_FB"], "ReP"
             )
+        issue_dict.pop("epics", None)
 
         # statistics
         if start_earliest is None or (
@@ -195,7 +287,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
     if result:
         fields_to_display = [k for k in result[0].keys() if k not in keys_to_hide]
 
-    print("Fields to display:")
+    print("\nFields to display:")
     for index, field in enumerate(fields_to_display):
         print(f"{index}: {field}")
 
@@ -210,7 +302,6 @@ def _queryJira(jql_str, field_dict, keys_to_hide, max_results=20, start_at=0):
         total_logged,
         total_remaining,
     )
-
 
 def jira_get_ca_items(fid, max_results, feature_done=False):
     """
@@ -251,12 +342,11 @@ def jira_get_ca_items(fid, max_results, feature_done=False):
         "Logged_Effort": "customfield_43290",
         "Release": "customfield_38724",  # value
         "Parent_Id": "customfield_29791",
-        "issuelinks": "issuelinks",  # for Entity_Item info
+        "issuelinks": "issuelinks",
     }
 
     keys_to_hide = [
         "Assignee_Email",   # retrieve from Assignee field
-
         "Item_ID",
         "Summary",
         "RC_FB",
@@ -267,7 +357,10 @@ def jira_get_ca_items(fid, max_results, feature_done=False):
         "Logged_Effort",
         "Release",
         "Parent_Id",
-        "issuelinks",
+
+        # calculated fields
+        "epics",
+        "links",
     ]
 
     status_filter = "status not in (done, obsolete)"

@@ -439,7 +439,7 @@ def backlog(request, fid):
                 release = Feature.objects.get(id=fid).release
                 boundary = ProgramBoundary.objects.get(
                     release=release[-4:], category='I1.2/P2 content'
-                )  # NO QA
+                )
 
             if boundary:
                 context['boundary'] = boundary
@@ -450,9 +450,20 @@ def backlog(request, fid):
             print(f"Exception in backlog(): {e}")
             traceback.print_exc()
 
+    # separate the link data from the item data
+    item_links = {}
+    for item in result:
+        key = item.get("Key")
+        links = item.get("links", [])
+        item_links[key] = links
+
+        # remove the links from the item
+        item.pop("links", None)
+
     context.update(
         {
-            'result': result,
+            'item_list': result,
+            'item_links': json.dumps(item_links),
         }
     )
 
