@@ -95,14 +95,14 @@
     <span class="divider">|</span>
 
     <label style="margin: 5px 2px; color: blue;">
-        <input type="checkbox" id="showDoneItems"> Show done items
+        <input type="checkbox" id="showDoneItems" {% if query_done %}checked{% endif %}> Show done items
     </label>
     <span class="divider">||</span>
 
     <a href="https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22project%20in%20(FFB)%20%20AND%20%5C%22Feature%20ID%5C%22%20~{{ fid }}%22%2C%22type%22%3A%22jql%22%7D%7D#" target="_blank">Open in JIRA</a>
 </div>
 
-{% if not item_list %}
+{% if not backlog_items %}
   <p style="color: red; margin:0 10px">
     Oops! Feature backlog not found, pls make sure the feature ID &lt;{{fid}}&gt; is correct.<br>
     If the feature is already done, click the above checkbox to show done items.
@@ -129,8 +129,8 @@
     </thead>
 
     <tbody>
-      {% for item in item_list %}
-        <tr id="{{item.Key}}">
+      {% for item in backlog_items %}
+        <tr id="{{item.Key}}" data-id="{{item.ID}}">
           <td class="dt-control"></td>
 
           {% for field_name, field_value in item.items %}
@@ -140,7 +140,7 @@
             {% elif field_name == "Key" %}
               <td class="no-wrap keyCell">
                 <a href="{{link_prefix}}{{field_value}}" target="_blank" title="{{item.Summary}}">{{ field_value }}</a>
-                {% if field_value in new_added_keys %}<img src="{% static 'pix/new.png' %}" alt="New" width="48" height="24" title="New added item">{% endif %}
+                {% if field_value in new_keys %}<img src="{% static 'pix/new.png' %}" alt="New" width="48" height="24" title="New added item">{% endif %}
               </td>
 
             {% elif field_name == "Progress" %}
@@ -156,7 +156,7 @@
               {% if field_value %}
               <td class="no-wrap {{item.tags}}" {% if item.hints %} title="{{ item.hints|safe }}" data-tooltip="{{ item.hints|safe }}" {% endif %}>
                 {{ field_value }}
-                {% if item.Key in endfb_changed_items %} <span style="font-size: x-small;">({{ endfb_changed_items|get_previous_end_fb:item.Key }})</span> {% endif %}
+                {% if item.Key in changed_items %} <span style="font-size: x-small;">({{ changed_items|get_previous_end_fb:item.Key }})</span> {% endif %}
               {% else %}
               <td class="no-wrap" style="font-size: 0.7em;">(Not Set)
                 {% if item.Assignee %}
@@ -278,19 +278,58 @@
 {% endif %}
 
 <script>
+var links = JSON.parse("{{ item_links|escapejs }}");
+if (links === null) {
+    console.log('No item links found, initialize an empty object.');
+    links = {};
+}
+
+function updateDatabaseViaAJAX() {
+  if(links['dirty']) {
+    var fid = "{{ fid }}";
+    console.log('Updating database via AJAX: ', fid);
+    $.ajax({
+        type: "POST",
+        url: `/ajax_update_item_links/${fid}/`,
+        data: JSON.stringify(links),
+        contentType: "application/json",
+        success: function(response) {
+            console.log("Links updated successfully:", response);
+        },
+        error: function(error) {
+            console.error("Error updating links:", error);
+        }
+    });
+    links['dirty'] = false; // reset the dirty flag to avoid multiple updates
+  }
+}
+
+window.addEventListener('beforeunload', function(event) {
+    // 执行一些清理操作
+    console.log('beforeunload event triggered');
+    //console.log(JSON.stringify(links));
+    updateDatabaseViaAJAX();
+});
+
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        console.log('Tab is hidden');
+        //console.log(JSON.stringify(links));
+        updateDatabaseViaAJAX();
+    } else {
+        //console.log('Tab is visible');
+    }
+});
+
 $(document).ready(function() {
   var urlParams = new URLSearchParams(window.location.search);
   if (urlParams.has('query_done')) {
-      $('#showDoneItems').prop('checked', true);
+      $('#showDoneItems').prop('checked', (urlParams.get('query_done') === 'true'));
   }
 
   $('#showDoneItems').change(function() {
-      var queryDoneUrl = new URL(window.location.href);
-      if (this.checked) {
-          queryDoneUrl.searchParams.set('query_done', '');
-      } else {
-          queryDoneUrl.searchParams.delete('query_done');
-      }
+    var queryDoneUrl = new URL(window.location.href);
+      queryDoneUrl.searchParams.set('query_done', this.checked ? 'true' : 'false');
       window.location.href = queryDoneUrl.toString();
   });
 
@@ -300,7 +339,9 @@ $(document).ready(function() {
       var queryDoneUrl = new URL(currentUrl);
 
       refreshUrl.searchParams.set('refresh', '');
-      queryDoneUrl.searchParams.set('query_done', '');
+
+      var showDoneItemsChecked = $('#showDoneItems').is(':checked');
+      queryDoneUrl.searchParams.set('query_done', showDoneItemsChecked ? 'true' : 'false');
 
       $('a#refreshLink').attr('href', refreshUrl.toString());
       $('a#queryDoneLink').attr('href', queryDoneUrl.toString());
@@ -593,18 +634,13 @@ $(document).ready(function() {
   }
 
   // Formatting function for row details - modify as you need
-  function format(key) {
-      // console.log('child data:', key);
-      // console.log("{{ item_links|escapejs }}");
-      
-      var item_links = JSON.parse("{{ item_links|escapejs }}");
-      if (item_links.hasOwnProperty(key)) {
-          var links = item_links[key];
+  function format(links) {
+          //var links = item_links[key];
           var link_prefix = "https://jiradc.ext.net.nokia.com/browse/";
 
           // if links is empty, return directly
           if (links.length === 0) {
-              return '<ul><li>Epic item not yet created</li></ul>';
+              return '<ul><li>Epic item not yet created or all done. <a href="#">Show done items</a></li></ul>';
           }
 
           var link_details = links.map(link => {
@@ -652,10 +688,7 @@ $(document).ready(function() {
                           ${link_details.join('')}
                       </tbody>
                   </table>`;
-      } else {
-          console.log('Key not found from item_links:', key);
-          return '&#9;Epic item not yet created!';
-      }
+
   }
 
   // Variable to keep track of the currently opened row
@@ -663,9 +696,11 @@ $(document).ready(function() {
 
   // Add event listener for opening and closing details
   $('#backlog-table').on('click', 'td.dt-control', function (e) {
-      let tr = e.target.closest('tr');
+      let tr = $(e.target).closest('tr'); // 将 tr 转换为 jQuery 对象
+      let id = tr.data('id'); // 使用 jQuery 的 data 方法获取 data-id 属性的值
+      let key = tr.attr('id');
       let row = table.row(tr);
-
+  
       if (row.child.isShown()) {
           // This row is already open - close it
           row.child.hide();
@@ -675,10 +710,47 @@ $(document).ready(function() {
           if (currentlyOpenedRow && currentlyOpenedRow.child.isShown()) {
               currentlyOpenedRow.child.hide();
           }
+  
+          // 设置鼠标指针为等待状态
+          $('body').css('cursor', 'wait');
+          $('#backlog-table').css('pointer-events', 'none');
+  
+          // Check if details are already cached
+          if (links[key]) {
+            console.log('Use cached link details for ' + key);
+            // let details = links[key].links.map(link => link.Key).join(', ');
+            // row.child(details).show();
+            row.child(format(links[key].links)).show();
+            currentlyOpenedRow = row;
 
-          // Open this row
-          row.child(format(tr.id)).show();
-          currentlyOpenedRow = row;
+            // 恢复鼠标指针为默认状态，并启用表格中的所有点击事件
+            $('body').css('cursor', 'default');
+            $('#backlog-table').css('pointer-events', 'auto');
+          } else {
+            console.log('Request link details via AJAX for ' + key);
+            $.ajax({
+                url: `/ajax_get_item_links/${id}/`,
+                method: 'GET',
+                success: function(linkData) {
+                    // let details = linkData.map(link => link.Key).join(', ');
+                    // row.child(details).show();
+                    row.child(format(linkData)).show();
+                    currentlyOpenedRow = row;
+                    
+                    // Cache the details
+                    links[key] = { links: linkData };
+                    links['dirty'] = true;
+                },
+                error: function() {
+                    alert('Failed to load details');
+                },
+                complete: function() {
+                    // 恢复鼠标指针为默认状态
+                    $('body').css('cursor', 'default');
+                    $('#backlog-table').css('pointer-events', 'auto');
+                }
+            });
+        }
       }
   });
 

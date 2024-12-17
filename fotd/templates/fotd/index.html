@@ -192,7 +192,7 @@
           //console.log(`${str}\n${encodedStr}\n${requiredStr}`);
           url = `https://jiradc.ext.net.nokia.com/secure/StructureBoard.jspa?p=2059383512&s=%7B%22sQuery%22%3A%7B%22query%22%3A%22${encodedStr}${featureId}%22%2C%22type%22%3A%22jql%22%7D%7D#`;
         } else {
-          url = `/backlog/${featureId}/`;
+          url = `/backlog/${featureId}/?query_done=true`;
         }
         window.open(url, '_blank');
       }

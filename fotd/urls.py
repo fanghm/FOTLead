@@ -1,7 +1,7 @@
 from django.contrib.auth.views import LoginView
 from django.urls import path
 
-from . import task_views, team_views, views
+from . import backlog_views, task_views, team_views, views
 
 app_name = 'fotd'
 urlpatterns = [
@@ -64,4 +64,6 @@ urlpatterns = [
         name='ajax_program_boundary',
     ),
     path('backlog/<fid>/', views.backlog, name='backlog'),
+    path('ajax_get_item_links/<id>/', backlog_views.ajax_get_item_links, name='ajax_get_item_links'),
+    path('ajax_update_item_links/<fid>/', backlog_views.ajax_update_item_links, name='ajax_update_item_links'),
 ]

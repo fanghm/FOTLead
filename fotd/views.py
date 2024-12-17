@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from jira import JIRAError
 
+from .data import BacklogQueryResult
 from .mailer import send_email
 from .models import (
     BacklogQuery,
@@ -282,59 +283,83 @@ def check_exec_issue(result, current_fb):
 
     return
 
+def detect_changes(query, result):
+    changes = ''
+    new_keys = [
+        item['Key']
+        for item in result
+        if not any(item['Key'] == old_item['Key'] for old_item in query.backlog_items)
+    ]
+    if new_keys:
+        print(f"New added keys: {new_keys}")
+        changes += f"New added: {new_keys}; "
+
+    changed_items = {
+        item['Key']: {'previous': old_item['End_FB'], 'current': item['End_FB']}
+        for old_item in query.backlog_items
+        for item in result
+        if item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB']
+    }
+
+    if changed_items:
+        endfb_changed_str = ";".join(
+            [f"{key}: {value['previous']}->{value['current']}" for key, value in changed_items.items()]
+        )
+        print(f"End_FB changes: {endfb_changed_str}")
+        changes += f"EndFB changes: {endfb_changed_str}"
+
+    return (new_keys, changed_items, changes)
 
 def backlog(request, fid):
     first_query = False
-    max_results = 20
+    jira_query = False
 
-    query = BacklogQuery.objects.filter(feature__id=fid).first()
+    refresh_query = 'refresh' in request.GET
+    query_done = include_done = False
+    if 'query_done' in request.GET:
+        query_done = request.GET['query_done'] == 'true'
+
+    result = []
+    item_links = {}
+    start_earliest = end_latest = ''
+    display_fields = None
+    new_keys = []
+    changed_items = {}
+    max_results = 200   # TODO: what if more than 200 items?
+
+    query = BacklogQuery.objects.filter(feature_id=fid).first()
     if query is None:
         first_query = True
-        # print(f"{fid}: first query")
     else:
-        result = query.query_result
+        result = query.backlog_items
+        item_links = query.item_links
         start_earliest = query.start_earliest
         end_latest = query.end_latest
         display_fields = query.display_fields
-        rfc_ratio = query.rfc_ratio
-        committed_ratio = query.committed_ratio
-        subfeatures = query.subfeatures.split(';')
-        total_spent = query.total_spent
-        total_remaining = query.total_remaining
+        include_done = query.include_done
+        new_keys = query.new_keys
+        changed_items = query.changed_items
 
-        max_results = len(result) + 10  # for refresh query
+        # for refreshed query, we need to get more items to detect changes
+        max_results = len(result) + 10
 
-        # TODO: read endfb_changed_items and new_added_keys from query.changes,
-        # after optimization the 'changes' as json format
-
-        # print(f"{fid}: last query at {query.query_time}: {len(result)} items")
-
-    jira_query = False
-    query_done = 'query_done' in request.GET
-    new_added_keys = []
-    endfb_changed_items = {}
-    if 'refresh' in request.GET or first_query or query_done:
+    print(f"{fid}: query_done={query_done}, include_done={include_done}")
+    if refresh_query or first_query or (query_done != include_done):
         jira_query = True
         print(f"{fid}: query from JIRA w/ max_results={max_results}")
         try:
-            (
-                result,
-                subfeatures,
-                display_fields,
-                start_earliest,
-                end_latest,
-                rfc_ratio,
-                committed_ratio,
-                total_spent,
-                total_remaining,
-            ) = jira_get_ca_items(fid, max_results, query_done)
+            query_result = jira_get_ca_items(fid, max_results, query_done)
+            result = query_result.backlog_items
+            start_earliest = query_result.start_earliest
+            end_latest = query_result.end_latest
+            display_fields = query_result.display_fields
+
         except JIRAError as e:
             error_message = (f"Failed to connect to JIRA: {e}")
             messages.error(request, error_message)
             return render(request, 'fotd/error.html')
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            print(f"Failed to make the JIRA query: {traceback.format_exc()}")
+        except Exception:
+            print(f"Exception in JIRA query: {traceback.format_exc()}")
             # Django message framework will add the message to the context,
             # needless to pass it explicitly
             # TODO: report the issue automatically via REST interface
@@ -345,65 +370,21 @@ def backlog(request, fid):
             messages.error(request, error_message)
             return render(request, 'fotd/error.html')
 
-        changes = ''
+        update_defaults = query_result.__dict__
         if not first_query and not query_done:
-            # if len(query.query_result) != len(result):
-            # find out new added items
-            new_added_keys = [
-                item['Key']
-                for item in result
-                if not any(
-                    item['Key'] == old_item['Key'] for old_item in query.query_result
-                )  # NO QA
-            ]
-            if new_added_keys:
-                print(f"New added keys: {new_added_keys}")
-                changes += f"New added: {new_added_keys}; "
-
-            # find out End_FB changed items
-            endfb_changed_items = {
-                item['Key']: {'previous': old_item['End_FB'], 'current': item['End_FB']}
-                for old_item in query.query_result
-                for item in result
-                if item['Key'] == old_item['Key']
-                and item['End_FB'] != old_item['End_FB']  # NO QA
-            }
-
-            if endfb_changed_items:
-                endfb_changed_str = ";".join(
-                    [
-                        f"{key}: {value['previous']}->{value['current']}"
-                        for key, value in endfb_changed_items.items()
-                    ]
-                )
-                print(f"End_FB changes: {endfb_changed_str}")
-                changes += f"EndFB changes: {endfb_changed_str}"
-
-        fields = {
-            'feature_id': fid,
-            'query_result': result,
-            'display_fields': display_fields,
-            'subfeatures': ";".join(subfeatures),
-            'total_spent': total_spent,
-            'total_remaining': total_remaining,
-        }
-
-        options = {
-            'start_earliest': start_earliest,
-            'end_latest': end_latest,
-            'rfc_ratio': rfc_ratio,
-            'committed_ratio': committed_ratio,
-            'changes': changes,
-        }
-
-        # Remove optional fields with value None or empty string
-        options = {k: v for k, v in options.items() if v is not None and v != ''}
-
-        # Create the db object
+            (new_keys, changed_items, changes) = detect_changes(query, result)
+            update_defaults['new_keys'] = new_keys
+            update_defaults['changed_items'] = changed_items
+            update_defaults['changes'] = changes
+        
+        # 使用 defaults 字典更新数据库
         try:
-            BacklogQuery.objects.create(**fields, **options)
+            BacklogQuery.objects.update_or_create(
+                feature_id=fid,
+                defaults=update_defaults,
+            )
         except Exception as e:
-            print(f"Failed to create BacklogQuery record: {e}")
+            print(f"Failed to create/update backlog record: {e}")
 
     current_fb = request.session['fb'][2:]
     if not (start_earliest and end_latest):  # no plan at all, for a new feature
@@ -416,15 +397,15 @@ def backlog(request, fid):
 
     context = {
         'fid': fid,
-        'subfeatures': subfeatures,
         'display_fields': display_fields,
         'display_sprints': display_sprints,
         # 'rfc_ratio': rfc_ratio,
         # 'committed_ratio': committed_ratio,
-        'new_added_keys': new_added_keys,
-        'endfb_changed_items': endfb_changed_items,
+        'new_keys': new_keys,
+        'changed_items': changed_items,
         'current_fb': current_fb,
         'link_prefix': 'https://jiradc.ext.net.nokia.com/browse/',
+        'query_done': query_done,
     }
 
     if not jira_query:
@@ -450,19 +431,9 @@ def backlog(request, fid):
             print(f"Exception in backlog(): {e}")
             traceback.print_exc()
 
-    # separate the link data from the item data
-    item_links = {}
-    for item in result:
-        key = item.get("Key")
-        links = item.get("links", [])
-        item_links[key] = links
-
-        # remove the links from the item
-        item.pop("links", None)
-
     context.update(
         {
-            'item_list': result,
+            'backlog_items': result,
             'item_links': json.dumps(item_links),
         }
     )

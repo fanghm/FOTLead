@@ -35,14 +35,14 @@ TEAM_ROLES = [
 # Extend the User model
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    # email = models.EmailField(max_length=255, blank=True) # frank.fang@nokia-sbell.com
-    # login_id = models.CharField(max_length=100, blank=True)   # qwn783
-    employee_id = models.CharField(max_length=8, blank=True)  # 61403612
-    disp_name = models.CharField(max_length=100, blank=True)  # Frank Fang (NSB)
-    title = models.CharField(max_length=100, blank=True)  # SW Engineer
-    department = models.CharField(max_length=100, blank=True)  # 5G R&D
-    country = models.CharField(max_length=100, blank=True)  # China
-    created = models.CharField(max_length=20, blank=True)  # 2021-01-01
+    # email = models.EmailField(max_length=255, blank=True)
+    # login_id = models.CharField(max_length=100, blank=True)
+    employee_id = models.CharField(max_length=8, blank=True)
+    disp_name = models.CharField(max_length=100, blank=True)
+    title = models.CharField(max_length=100, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    created = models.CharField(max_length=20, blank=True)
 
     def __str__(self):
         return self.user.username
@@ -58,7 +58,6 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
 class ProgramBoundary(models.Model):
     release = models.CharField(max_length=4)
     category = models.CharField(max_length=50)
-
     sw_done = models.CharField(max_length=4)
     et_ec = models.CharField(max_length=4)
     et_fer = models.CharField(max_length=4)
@@ -98,9 +97,7 @@ class Feature(models.Model):
 
     # Labels like Test_Heavy, LeadTribe_xxx, program milestone, etc.
     labels = models.CharField(blank=True, max_length=100)
-    boundary = models.ForeignKey(
-        ProgramBoundary, on_delete=models.PROTECT, blank=True, null=True
-    )
+    boundary = models.ForeignKey(ProgramBoundary, models.SET_NULL, blank=True, null=True)
 
     phase = models.CharField(max_length=12, choices=PHASE_CHOICES, default='Planning')
     customer = models.CharField(max_length=100, blank=True)
@@ -108,21 +105,9 @@ class Feature(models.Model):
     fusion_id = models.CharField(max_length=16, blank=True)
 
     # links
-    fp_link = models.CharField(
-        max_length=100, blank=True, verbose_name='FP Link', help_text='Link to the FP'
-    )
-    cfam_link = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name='CFAM Link',
-        help_text='Link to the CFAM',
-    )
-    rep_link = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name='Reporting Portal',
-        help_text='Link to the Reporting Portal',
-    )
+    fp_link = models.CharField(max_length=100, blank=True)
+    cfam_link = models.CharField(max_length=100, blank=True)
+    rep_link = models.CharField(max_length=100, blank=True, verbose_name='Test Report')
 
     risk_status = models.CharField(max_length=6, default='Green', choices=RISK_LEVELS)
     risk_summary = models.CharField(max_length=128, blank=True)
@@ -158,11 +143,7 @@ class FeatureUpdate(models.Model):
 
 
 class FeatureRoles(models.Model):
-    feature = models.OneToOneField(
-        Feature,
-        on_delete=models.CASCADE,
-        primary_key=True,
-    )
+    feature = models.OneToOneField(Feature, on_delete=models.CASCADE, primary_key=True)
     pdm = models.CharField(max_length=100)
     apm = models.CharField(max_length=100)
     fot_lead = models.CharField(max_length=100)
@@ -262,19 +243,27 @@ class Sprint(models.Model):
 
 # Save backlog queries from JIRA
 class BacklogQuery(models.Model):
-    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
-    query_time = models.DateTimeField(auto_now_add=True)
-    query_result = JSONField()
-    subfeatures = models.CharField(max_length=9, blank=True)
-    display_fields = JSONField()
-    start_earliest = models.CharField(max_length=4, blank=True)
-    end_latest = models.CharField(max_length=4, blank=True)
-    rfc_ratio = models.IntegerField(blank=True)
-    committed_ratio = models.IntegerField(blank=True)
-    total_spent = models.DecimalField(max_digits=9, decimal_places=2)
-    total_remaining = models.DecimalField(max_digits=9, decimal_places=2)
+    feature_id = models.CharField(max_length=11, primary_key=True)
+    backlog_items = JSONField()
+    item_links = JSONField(blank=True, null=True)   # from AJAX query
+
+    new_keys = JSONField(blank=True, null=True)
+    changed_items = JSONField(blank=True, null=True)
     changes = models.TextField(blank=True)
 
+    start_earliest = models.CharField(max_length=4, blank=True)
+    end_latest = models.CharField(max_length=4, blank=True)
+
+    rfc_ratio = models.IntegerField(blank=True)
+    committed_ratio = models.IntegerField(blank=True)
+
+    total_logged = models.DecimalField(max_digits=9, decimal_places=2)
+    total_remaining = models.DecimalField(max_digits=9, decimal_places=2)
+    
+    display_fields = JSONField()
+    include_done = models.BooleanField(default=False)
+    query_time = models.DateTimeField(auto_now_add=True)
+    
     class Meta:
         ordering = ['-query_time']
         verbose_name_plural = "Backlog Queries"
