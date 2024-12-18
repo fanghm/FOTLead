@@ -1,5 +1,6 @@
 # pip install jira
-
+import os
+import django
 import json
 import sqlite3
 from datetime import date, datetime, timedelta
@@ -7,8 +8,8 @@ from datetime import date, datetime, timedelta
 from django.conf import settings
 from jira import JIRA
 
-# os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'FOTLead.settings')
-# django.setup()
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'FOTLead.settings')
+django.setup()
 
 
 def _initJira():
@@ -212,7 +213,9 @@ def jiraQuery(fid, field_dict):
     jira = _initJira()
     jql_str = (
         f'("Feature ID" ~ {fid}) and issuetype = "Competence Area" '
-        f'AND status not in (obsolete) order by "Item ID"'
+        f'AND status not in (done, obsolete) '
+        # f'AND status not in (obsolete) '
+        f'order by "Item ID"'
     )
     print('jql: ' + jql_str)
     json_result = jira.search_issues(
@@ -221,8 +224,11 @@ def jiraQuery(fid, field_dict):
 
     # print("Total results={}\n".format(len(results)))
     # print(json_result)
-    with open(f'{fid}.json', 'w', encoding='utf-8') as f:
+    json_file = f'{fid}.json'
+    with open(json_file, 'w', encoding='utf-8') as f:
         f.write(json.dumps(json_result))
+
+    print(f'JIRA query result dumped to: {json_file}')
 
     # for issue in json_result['issues']:
     #     print(issue['key'])
@@ -429,7 +435,7 @@ def update_desc():
 
 
 # --- main entry ----
-jiraQuery('CB011098-SR', field_dict)
+jiraQuery('CB012346-SR', field_dict)
 
 # initFbDates()
 # get_text2('CNI-113494')

@@ -1,43 +1,42 @@
 # .pre-commit-config.yaml (28.06.2024)
+# Run the following command to install the pre-commit hooks defined in this file:
+#   pre-commit install
+# More commands: pre-commit autoupdate, pre-commit run --all-files
 
 #exclude: '^$'
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      # - id: check-added-large-files
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v4.6.0
+      hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          # - id: check-added-large-files
 
+    - repo: https://github.com/PyCQA/isort
+      rev: 5.13.2
+      hooks:
+          - id: isort
+            args: ["--profile", "black"]
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]
+    - repo: https://github.com/psf/black-pre-commit-mirror
+      rev: 24.8.0
+      hooks:
+          - id: black
+            args: ["--skip-string-normalization"]
 
+    - repo: https://github.com/pycqa/flake8
+      rev: 7.1.1
+      hooks:
+          - id: flake8
+            args: [--max-line-length=88]
+            #additional_dependencies: [flake8-docstrings]
+            #exclude: ^testing/(data|examples)/
 
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.8.0
-    hooks:
-      - id: black
-        args: ["--skip-string-normalization"]
-
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
-    hooks:
-      - id: flake8
-        args: [--max-line-length=88]
-        #additional_dependencies: [flake8-docstrings]
-        #exclude: ^testing/(data|examples)/
-
-
-  - repo: local
-    hooks:
-      - id: django-check
-        name: Run Django Check
-        entry: python manage.py check
-        language: system
-        pass_filenames: false # if false no filenames will be passed to the hook
-        types: [python]
+    - repo: local
+      hooks:
+          - id: django-check
+            name: Run Django Check
+            entry: python manage.py check
+            language: system
+            pass_filenames: false # if false no filenames will be passed to the hook
+            types: [python]
