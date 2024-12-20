@@ -259,7 +259,7 @@ def get_entity_item_summary(issue):
 
 # TODO: for items with secondary links, get the actual logged effort and progress info
 def _queryJira(
-    jql_str, field_dict, keys_to_hide, include_done, max_results=20, start_at=0
+    jql_str, field_dict, fields_to_hide, include_done, max_results=20, start_at=0
 ):
     jira = _initJira()
     json_result = jira.search_issues(
@@ -327,7 +327,7 @@ def _queryJira(
 
     fields_to_display = []
     if result:
-        fields_to_display = [k for k in result[0].keys() if k not in keys_to_hide]
+        fields_to_display = [k for k in result[0].keys() if k not in fields_to_hide]
 
     print("\nFields to display:")
     for index, field in enumerate(fields_to_display):
@@ -349,12 +349,13 @@ def _queryJira(
 def jira_get_ca_items(fid, max_results, include_done=False):
     """
     CAUTION:
-    All the fields in below dict, if not listed in keys_to_hide, will be shown
+    All the fields in below dict, if not listed in fields_to_hide, will be shown
     in the backlog table (per below sequence)
     """
 
     field_dict = {
         # 0: Key
+        #
         # 1-8
         "Competence_Area": "customfield_38690",
         "Activity_Type": "customfield_38750",
@@ -369,7 +370,7 @@ def jira_get_ca_items(fid, max_results, include_done=False):
         # 9: Progress
         # 10: SI/System_Item
         # 11: EI/Entity_Item
-        # 12: ReP   # removed, to update at frontend
+        #
         # hidden fields
         "Item_ID": "customfield_38702",
         "Summary": "summary",
@@ -380,9 +381,11 @@ def jira_get_ca_items(fid, max_results, include_done=False):
         "Risk_Details": "customfield_38435",
         "Logged_Effort": "customfield_43290",
         "Release": "customfield_38724",  # value
+        # mandatory to get EI summary
+        "issuelinks": "issuelinks",
     }
 
-    keys_to_hide = [
+    fields_to_hide = [
         "ID",
         "Assignee_Email",  # retrieve from Assignee field
         "Item_ID",
@@ -406,7 +409,7 @@ def jira_get_ca_items(fid, max_results, include_done=False):
         'AND {status_filter} order by "Item ID"'
     ).format(fid=fid, status_filter=status_filter)
 
-    return _queryJira(jql_str, field_dict, keys_to_hide, include_done, max_results)
+    return _queryJira(jql_str, field_dict, fields_to_hide, include_done, max_results)
 
 
 def jira_get_text2(fid):
