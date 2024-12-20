@@ -64,6 +64,19 @@ urlpatterns = [
         name='ajax_program_boundary',
     ),
     path('backlog/<fid>/', views.backlog, name='backlog'),
-    path('ajax_get_item_links/<id>/', backlog_views.ajax_get_item_links, name='ajax_get_item_links'),
-    path('ajax_update_item_links/<fid>/', backlog_views.ajax_update_item_links, name='ajax_update_item_links'),
+    path(
+        'ajax_get_item_links/<id>/',
+        backlog_views.ajax_get_item_links,
+        name='ajax_get_item_links',
+    ),
+    path(
+        'ajax_get_all_links/<id>/',
+        backlog_views.ajax_get_all_links,
+        name='ajax_get_all_links',
+    ),
+    path(
+        'ajax_update_item_links/<fid>/',
+        backlog_views.ajax_update_item_links,
+        name='ajax_update_item_links',
+    ),
 ]

@@ -1,16 +1,15 @@
 import datetime
-import re
 import getpass
-import requests
+import re
 import traceback
 import urllib.parse
 from datetime import timedelta
 
+import requests
 from django.conf import settings
 from jira import JIRA, JIRAError
 
 from .data import BacklogQueryResult
-
 from .globals import _get_fb_end_date, _get_fb_start_date
 
 JIRA_TEXT2 = "customfield_38727"
@@ -26,10 +25,12 @@ C) Feature Blocking Prontos: (F-level)
 N/A"""
 
 
-def _initJira():    
+def _initJira():
     return JIRA(server=JIRA_SERVER_URL, basic_auth=JIRA_AUTH_CREDENTIAL)
 
-def _get_rep_link(epics, start, end, anchor):
+
+# Generate ReP link for ET/ST CA item
+def _get_rep_link(epics, start, end):
     rep_start = _get_fb_start_date(start) - timedelta(days=14)
     rep_end = _get_fb_end_date(end)
 
@@ -41,10 +42,10 @@ def _get_rep_link(epics, start, end, anchor):
     }
 
     safe_str = urllib.parse.urlencode(q)
-    # print(f"ReP query string: {q}\n{safe_str}")
-
     url = "https://rep-portal.ext.net.nokia.com/charts/tep/?%s" % safe_str
-    return '<a href="%s" target="_blank">%s</a>' % (url, anchor)
+    # print(f"ReP query string: {q}\n{safe_str}")
+    return url
+
 
 def extract_issue_fields(issue, field_dict, save_none_value=True):
     issue_dict = {"ID": issue["id"], "Key": issue["key"]}
@@ -81,6 +82,7 @@ def extract_issue_fields(issue, field_dict, save_none_value=True):
 
     return issue_dict
 
+
 def calculate_progress(issue_dict, total_logged, total_remaining):
     logged_effort = issue_dict.get("Logged_Effort")
     if not logged_effort:
@@ -95,77 +97,105 @@ def calculate_progress(issue_dict, total_logged, total_remaining):
     total_remaining += remaining
 
     issue_dict["Total_Effort"] = logged + remaining
-    issue_dict["Progress"] = (logged / issue_dict["Total_Effort"] * 100) if issue_dict["Total_Effort"] > 0 else 0
+    issue_dict["Progress"] = (
+        (logged / issue_dict["Total_Effort"] * 100)
+        if issue_dict["Total_Effort"] > 0
+        else 0
+    )
 
     return total_logged, total_remaining
 
-"""
-return a link's field dict without "Key" field
-"""
+
 def fetch_json_data(url):
+    """
+    fetch the json data from the given url and
+    return the extracted issue fields in a dict
+    """
+
     epic_field_dict = {
-        "Item_Type": "issuetype", # name
+        "Item_Type": "issuetype",  # name
         # "Item_ID": "customfield_38702",
-        "Summary": "summary", # too much text
-        "Status": "status", # name
-        "Assignee": "assignee", # displayName, emailAddress
+        "Summary": "summary",  # too much text
+        "Status": "status",  # name
+        "Assignee": "assignee",  # displayName, emailAddress
         "Start_FB": "customfield_38694",
         "End_FB": "customfield_38693",
         "Logged_Effort": "customfield_43290",
         "Time_Remaining": "customfield_43291",
-
         # Useful CA/EI fields
-        "RC_FB": "customfield_43490", # value
-        "FB_Committed_Status": "customfield_38758", # value
-        "Risk_Status": "customfield_38754", # value
-
+        "RC_FB": "customfield_43490",  # value
+        "Risk_Status": "customfield_38754",  # value
+        "FB_Committed_Status": "customfield_38758",  # value
         # Useful Epic fields
-        "Team": "customfield_29790", # name
-        "Labels": "labels", # test case number
+        "Team": "customfield_29790",  # name
+        "Labels": "labels",  # test case number
     }
 
     response = requests.get(url, auth=JIRA_AUTH_CREDENTIAL)
     if response.status_code == 200:
         json_issue = response.json()
-        print(f"{json_issue['fields']['issuetype']['name']}: {json_issue['key']}")
+        # print(f"{json_issue['fields']['issuetype']['name']}: {json_issue['key']}")
         return extract_issue_fields(json_issue, epic_field_dict, False)
     else:
         print(f"Failed to access {url}, status code: {response.status_code}")
         return {}
 
-def get_item_links(url):
+
+def get_item_links(url, include_done=False, is_testing=False):
     """
-    query the CA item's linked issues and return in a list, excluding the EI link
-    link_list = [
-        {"Relationship", "is child of|depends on|..."},
-        {"Key", "FPB-xxx|FCA_xxx|..."},
-        {"Item_Type", "Epic|CA"},
-        ...
-    ]
+    Query a CA item's links (excluding the parent EI link) and return in a dict
+    {
+        "links": [
+            {
+                "Relationship", "is child of|depends on|...",
+                "Key", "FPB-xxx|FCA_xxx|...",
+                "Item_Type", "Epic|Competence Area",
+                ...
+            },
+            ...
+        ],
+        "rep": "https://rep-portal.ext.net.nokia.com/charts/tep/?..."
+    }
+
     """
+    link_list = []
+    epic_list = []
+
+    ca_field_dict = {
+        "Activity_Type": "customfield_38750",
+        "Start_FB": "customfield_38694",
+        "End_FB": "customfield_38693",
+        "IssueLinks": "issuelinks",
+    }
 
     response = requests.get(url, auth=JIRA_AUTH_CREDENTIAL)
     if response.status_code != 200:
         print(f"Failed to access {url}, status code: {response.status_code}")
         return []
-    
-    json_issue = response.json()
-    link_list = []
 
-    if "issuelinks" not in json_issue["fields"]:
-        print(f"Exception: no issue links for {json_issue['key']}!")
+    json_issue = response.json()
+    issue_dict = extract_issue_fields(json_issue, ca_field_dict, True)
+
+    if "IssueLinks" not in issue_dict:
+        print(f"Exception: no links for {json_issue['key']}!")
         return []
 
+    link_status = ["Done", "Obsolete"] if include_done else ["Obsolete"]
+    is_testing = (
+        issue_dict["Activity_Type"] in ["System Testing", "Entity Testing"]
+        and issue_dict["Start_FB"]
+        and issue_dict["End_FB"]
+    )
+
     print(f"\nProcessing links for {json_issue['key']}")
-    for link in json_issue["fields"]["issuelinks"]:
+    for link in issue_dict["IssueLinks"]:
         link_dict = {}
 
-        # parent, CA/EI
-        if (
-            "inwardIssue" in link
-            and link["inwardIssue"]["fields"]["status"]["name"] not in ("Done", "Obsolete")
-        ):
-            # skip EI link
+        # mostly CA items
+        if "inwardIssue" in link and link["inwardIssue"]["fields"]["status"][
+            "name"
+        ] not in (link_status):
+            # skip "is child of" EI item
             if link["inwardIssue"]["fields"]["issuetype"]["name"] == "Entity Item":
                 continue
 
@@ -174,20 +204,33 @@ def get_item_links(url):
             link_dict["Relationship"] = link["type"]["inward"]
             link_list.append(link_dict)
 
-        # child, epics
-        elif (
-            "outwardIssue" in link
-            and link["outwardIssue"]["fields"]["status"]["name"] not in ("Done", "Obsolete")
-        ):
+        # mostly epics, "is primary of" CA item
+        elif "outwardIssue" in link and link["outwardIssue"]["fields"]["status"][
+            "name"
+        ] not in (link_status):
             link_dict = fetch_json_data(link["outwardIssue"]["self"])
             link_dict["Relationship"] = link["type"]["outward"]
+
+            if is_testing and link_dict["Item_Type"] == "Epic":
+                # print(f"Found testing Epic: {link_dict}")
+                link_dict["TC_Number"] = get_testcase_number(link_dict["Labels"])
+                epic_list.append(link_dict["Key"])
+
             link_list.append(link_dict)
-            
-        # remove the 'labels' field as it's too much text
+
+        # remove the 'labels' field as it might have much text
         link_dict.pop("Labels", None)
         link_dict["Timestamp"] = datetime.datetime.now()
 
-    return link_list
+    if epic_list:
+        rep_link = _get_rep_link(
+            epic_list, issue_dict["Start_FB"], issue_dict["End_FB"]
+        )
+        # print(f"ReP link: {rep_link}")
+        return {"links": link_list, "rep": rep_link}
+
+    return {"links": link_list}
+
 
 def get_testcase_number(labels):
     for label in labels:
@@ -196,6 +239,7 @@ def get_testcase_number(labels):
             return match.group(1)
     return None
 
+
 def get_entity_item_summary(issue):
     if "issuelinks" not in issue["fields"]:
         print(f"Exception: no issue links for {issue['key']}!")
@@ -203,16 +247,20 @@ def get_entity_item_summary(issue):
 
     for link in issue["fields"]["issuelinks"]:
         if (
-            "inwardIssue" in link
-            and link["inwardIssue"]["fields"]["status"]["name"] not in ("Obsolete")
+            link["type"]["name"] == "Parent"
+            and "inwardIssue" in link
+            # and link["inwardIssue"]["fields"]["status"]["name"] not in ("Obsolete")
             and link["inwardIssue"]["fields"]["issuetype"]["name"] == "Entity Item"
         ):
             return link["inwardIssue"]["fields"]["summary"]
 
     return None
 
+
 # TODO: for items with secondary links, get the actual logged effort and progress info
-def _queryJira(jql_str, field_dict, keys_to_hide, include_done, max_results=20, start_at=0):
+def _queryJira(
+    jql_str, field_dict, keys_to_hide, include_done, max_results=20, start_at=0
+):
     jira = _initJira()
     json_result = jira.search_issues(
         jql_str,
@@ -223,11 +271,11 @@ def _queryJira(jql_str, field_dict, keys_to_hide, include_done, max_results=20, 
     )
 
     result = []
-    start_earliest = None
-    end_latest = None
+    start_earliest = end_latest = None
     rfc_ratio = committed_ratio = 0
     rfc_count = committed_count = 0
     total_logged = total_remaining = 0
+
     total_count = json_result["total"]
     print(f"Total count: {total_count}")
 
@@ -240,7 +288,7 @@ def _queryJira(jql_str, field_dict, keys_to_hide, include_done, max_results=20, 
             issue_dict, total_logged, total_remaining
         )
 
-        # get SI ID from CA's Item_ID like 'CB011098-SR-A-CP2_RAN_SysSpec'
+        # Get SI ID from CA's Item_ID like 'CB011098-SR-A-CP2_RAN_SysSpec'
         tokens = issue_dict["Item_ID"].split("-", 3)
         if len(tokens) >= 3:
             issue_dict["System_Item"] = "-".join(tokens[:3])
@@ -248,25 +296,13 @@ def _queryJira(jql_str, field_dict, keys_to_hide, include_done, max_results=20, 
             issue_dict["System_Item"] = "Unknown"
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
 
-        # is_planned_test_item = (
-        #     issue_dict["Activity_Type"] in ["System Testing", "Entity Testing"]
-        #     and issue_dict["Start_FB"]
-        #     and issue_dict["End_FB"]
-        # )
-
         # Get EI from issue link
         issue_dict["Entity_Item"] = "[{}] {}".format(
             issue_dict["Release"], get_entity_item_summary(issue)
         )
-        issue_dict.pop("issuelinks", None)  # too much text
 
-        # issue_dict["ReP"] = None
-        # epics = issue_dict.get("epics", [])
-        # if is_planned_test_item and len(epics) > 0:
-        #     issue_dict["ReP"] = _get_rep_link(
-        #         epics, issue_dict["Start_FB"], issue_dict["End_FB"], "ReP"
-        #     )
-        # issue_dict.pop("epics", None)
+        issue_dict.pop("issuelinks", None)  # too much text
+        issue_dict.pop("Item_ID", None)
 
         # statistics
         if start_earliest is None or (
@@ -309,34 +345,31 @@ def _queryJira(jql_str, field_dict, keys_to_hide, include_done, max_results=20, 
         include_done=include_done,
     )
 
+
 def jira_get_ca_items(fid, max_results, include_done=False):
     """
     CAUTION:
     All the fields in below dict, if not listed in keys_to_hide, will be shown
     in the backlog table (per below sequence)
     """
+
     field_dict = {
         # 0: Key
-
         # 1-8
         "Competence_Area": "customfield_38690",
         "Activity_Type": "customfield_38750",
         "Assignee": "assignee",
         "Start_FB": "customfield_38694",
         "End_FB": "customfield_38693",
-
-        # Original_Estimate (customfield_43292) field is no longer available in JIRA, 
+        # Original_Estimate (customfield_43292) field is no longer available in JIRA,
         # replaced it with calculated field "Total_Effort"
         "Total_Effort": "customfield_43292",
-
         "Time_Remaining": "customfield_43291",
         "RC_Status": "customfield_38728",
-
         # 9: Progress
         # 10: SI/System_Item
         # 11: EI/Entity_Item
         # 12: ReP   # removed, to update at frontend
-
         # hidden fields
         "Item_ID": "customfield_38702",
         "Summary": "summary",
@@ -347,13 +380,11 @@ def jira_get_ca_items(fid, max_results, include_done=False):
         "Risk_Details": "customfield_38435",
         "Logged_Effort": "customfield_43290",
         "Release": "customfield_38724",  # value
-        "Parent_Id": "customfield_29791",
-        "issuelinks": "issuelinks",
     }
 
     keys_to_hide = [
         "ID",
-        "Assignee_Email",   # retrieve from Assignee field
+        "Assignee_Email",  # retrieve from Assignee field
         "Item_ID",
         "Summary",
         "RC_FB",
@@ -363,11 +394,6 @@ def jira_get_ca_items(fid, max_results, include_done=False):
         "Risk_Details",
         "Logged_Effort",
         "Release",
-        "Parent_Id",
-
-        # calculated fields
-        "epics",
-        "links",
     ]
 
     status_filter = "status not in (done, obsolete)"
