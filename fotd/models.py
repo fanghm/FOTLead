@@ -97,7 +97,9 @@ class Feature(models.Model):
 
     # Labels like Test_Heavy, LeadTribe_xxx, program milestone, etc.
     labels = models.CharField(blank=True, max_length=100)
-    boundary = models.ForeignKey(ProgramBoundary, models.SET_NULL, blank=True, null=True)
+    boundary = models.ForeignKey(
+        ProgramBoundary, models.SET_NULL, blank=True, null=True
+    )
 
     phase = models.CharField(max_length=12, choices=PHASE_CHOICES, default='Planning')
     customer = models.CharField(max_length=100, blank=True)
@@ -245,7 +247,7 @@ class Sprint(models.Model):
 class BacklogQuery(models.Model):
     feature_id = models.CharField(max_length=11, primary_key=True)
     backlog_items = JSONField()
-    item_links = JSONField(blank=True, null=True)   # from AJAX query
+    item_links = JSONField(blank=True, null=True)  # from AJAX query
 
     new_keys = JSONField(blank=True, null=True)
     changed_items = JSONField(blank=True, null=True)
@@ -259,11 +261,11 @@ class BacklogQuery(models.Model):
 
     total_logged = models.DecimalField(max_digits=9, decimal_places=2)
     total_remaining = models.DecimalField(max_digits=9, decimal_places=2)
-    
+
     display_fields = JSONField()
     include_done = models.BooleanField(default=False)
-    query_time = models.DateTimeField(auto_now_add=True)
-    
+    query_time = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ['-query_time']
         verbose_name_plural = "Backlog Queries"

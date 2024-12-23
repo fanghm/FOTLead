@@ -1,3 +1,5 @@
+// Variable to keep track of the currently opened row, for hiding the child row only
+var currentlyOpenedRow = null;
 
 //var LinkCache = JSON.parse("{{ item_links|escapejs }}");
 if (LinkCache === null) {
@@ -7,9 +9,6 @@ if (LinkCache === null) {
 
 function updateDatabaseViaAJAX() {
   if(LinkCache['dirty']) {
-    LinkCache['dirty'] = false; // reset the dirty flag to avoid multiple updates
-    //var FeatureId = "{{ fid }}";
-
     console.log('Updating database via AJAX: ', FeatureId);
     $.ajax({
         type: "POST",
@@ -17,18 +16,17 @@ function updateDatabaseViaAJAX() {
         data: JSON.stringify(LinkCache),
         contentType: "application/json",
         success: function(response) {
+            LinkCache['dirty'] = false; // reset the dirty flag to avoid multiple updates
             console.log("Links updated successfully:", response);
         },
         error: function(error) {
             console.error("Error updating links to db:", error);
-            LinkCache['dirty'] = true; // set the dirty flag back to true
         }
     });
   }
 }
 
 window.addEventListener('beforeunload', function(event) {
-    // 执行一些清理操作
     console.log('beforeunload event triggered');
     //console.log(JSON.stringify(LinkCache));
     updateDatabaseViaAJAX();
@@ -61,9 +59,20 @@ $(document).ready(function() {
     var rep = linkData["rep"];
     var link_prefix = "https://jiradc.ext.net.nokia.com/browse/";
 
+    var queryTime = "";
+    if ("timestamp" in linkData && linkData["timestamp"]) {
+        queryTime = new Date(linkData["timestamp"]).toLocaleString();
+        queryTime += ": ";
+    }
+
     // if links is empty, return directly
-    if (links.length === 0) {
-        return '<ul><li>Child item not yet created, or all of them are done already. <a id="refreshLinks" href="#">Refresh</a></li></ul>';
+    if (links && links.length === 0) {
+        return `<ul>
+                    <li>
+                        ${queryTime}Child item not yet created, or all of them are done.
+                        <a id="refreshLinks2" class="refreshLinks" href="#">Refresh</a>
+                    </li>
+                </ul>`;
     }
 
     var link_details = links.map(link => {
@@ -87,7 +96,7 @@ $(document).ready(function() {
                     <td>${link.Start_FB}</td>
                     <td>${link.End_FB}</td>
                     <td>${total_effort}</td>
-                   <td>${link.Time_Remaining !== undefined ? link.Time_Remaining : ''}</td>
+                    <td>${link.Time_Remaining !== undefined ? link.Time_Remaining : ''}</td>
                     <td>${comment}</td>
                 </tr>`;
     });
@@ -100,6 +109,15 @@ $(document).ready(function() {
                               <td colspan="8"><a href="${rep}"" target="_blank">Test Execution Curve</a></td>
                             </tr>`;
     }
+
+    linkDetailsHtml += `<tr>
+                            <td colspan="10">
+                                Query Time: ${queryTime}
+                                <a id="refreshLinks1" class="refreshLinks" href="#">
+                                    <img src="${RefreshImageUrl}" alt="Refresh" width="18" height="18" title="Refresh">
+                                </a>
+                            </td>
+                        </tr>`;
 
     return `<table class="tight-table">
                 <thead>
@@ -123,13 +141,11 @@ $(document).ready(function() {
 
 }
 
-  // Variable to keep track of the currently opened row
-  var currentlyOpenedRow = null;
 
   // Add event listener for opening and closing details
   $('#backlog-table').on('click', 'td.dt-control', function (e) {
         if (typeof window.BacklogTable === 'undefined') {
-            console.error('Fatal: DataTable is not yet initialized.');
+            console.error('Fatal: DataTable is not yet initialized somehow.');
             return;
         }
 
@@ -187,36 +203,75 @@ $(document).ready(function() {
       }
   });
 
+function refreshLinkDetails(tr) {
+    let id = tr.data('id');
+    let key = tr.attr('id');
+    let row = window.BacklogTable.row(tr);
+
+    if (!key || !id) {
+        console.error('Failed to get the key or id of the currently opened row.');
+        return;
+    }
+
+    if (row.child.isShown()) {
+        row.child.hide();
+        currentlyOpenedRow = null;
+    }
+
+    console.log('Refresh link details for ' + key + ' with id ' + id);
+    $('body').css('cursor', 'wait');
+    $('#backlog-table').css('pointer-events', 'none');
+    $.ajax({
+        type: "GET",
+        url: `/ajax_get_all_links/${id}/`,
+        method: 'GET',
+        success: function(linkData) {
+            // replace the current child row with the updated one
+            row.child(format(linkData)).show();
+            currentlyOpenedRow = row;
+
+            // Cache the details
+            LinkCache[key] = linkData;
+            LinkCache['dirty'] = true;
+        },
+        error: function() {
+            currentlyOpenedRow = null;
+            alert('Failed to load details');
+        },
+        complete: function() {
+            // restore the cursor and enable table click events
+            $('body').css('cursor', 'default');
+            $('#backlog-table').css('pointer-events', 'auto');
+        }
+    });
+}
+
   // use event delegation to catch the click event on the dynamically added link
-  $(document).on('click', '#refreshLinks', function(event) {
+  $(document).on('click', '#refreshLinks1', function(e) {
       console.log('Refresh link details');
-      event.preventDefault();
+      e.preventDefault();
 
-      // get current open row's id
-      let id = currentlyOpenedRow.data('id');
-      let key = currentlyOpenedRow.data().ID;
-      console.log('Refresh link details for ' + key);
+      let clicked = $(this);
+      let tr = clicked.closest('tr').closest('td').closest('tr').prevAll('.dt-hasChild').first();
+      if (tr.length === 0) {
+            console.error('No parent <tr> with class "dt-hasChild" found.');
+            return;
+        }
 
-      $.ajax({
-          type: "GET",
-          url: "/ajax_get_all_links/${id}/",
-                method: 'GET',
-                success: function(linkData) {
-                    // replace the current child row with the updated one
-                    currentlyOpenedRow.child(format(linkData)).show();
+        refreshLinkDetails(tr);
+    });
 
-                    // Cache the details
-                    LinkCache[key] = linkData;
-                    LinkCache['dirty'] = true;
-                },
-                error: function() {
-                    alert('Failed to load details');
-                },
-                complete: function() {
-                    // restore the cursor and enable table click events
-                    $('body').css('cursor', 'default');
-                    $('#backlog-table').css('pointer-events', 'auto');
-                }
+    $(document).on('click', '#refreshLinks2', function(e) {
+        console.log('No links currently, refresh to see if any update');
+        e.preventDefault();
+
+        let clicked = $(this);
+        let tr = clicked.closest('tr').prevAll('.dt-hasChild').first();
+        if (tr.length === 0) {
+              console.error('No parent <tr> with class "dt-hasChild" found.');
+              return;
+          }
+
+          refreshLinkDetails(tr);
       });
-  });
 });

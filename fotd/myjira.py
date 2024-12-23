@@ -211,7 +211,11 @@ def get_item_links(url, include_done=False, is_testing=False):
             link_dict = fetch_json_data(link["outwardIssue"]["self"])
             link_dict["Relationship"] = link["type"]["outward"]
 
-            if is_testing and link_dict["Item_Type"] == "Epic":
+            if (
+                is_testing
+                and link_dict["Item_Type"] == "Epic"
+                and "Labels" in link_dict
+            ):
                 # print(f"Found testing Epic: {link_dict}")
                 link_dict["TC_Number"] = get_testcase_number(link_dict["Labels"])
                 epic_list.append(link_dict["Key"])
@@ -220,16 +224,19 @@ def get_item_links(url, include_done=False, is_testing=False):
 
         # remove the 'labels' field as it might have much text
         link_dict.pop("Labels", None)
-        link_dict["Timestamp"] = datetime.datetime.now()
 
     if epic_list:
         rep_link = _get_rep_link(
             epic_list, issue_dict["Start_FB"], issue_dict["End_FB"]
         )
         # print(f"ReP link: {rep_link}")
-        return {"links": link_list, "rep": rep_link}
+        return {
+            "links": link_list,
+            "rep": rep_link,
+            "timestamp": datetime.datetime.now(),
+        }
 
-    return {"links": link_list}
+    return {"links": link_list, "timestamp": datetime.datetime.now()}
 
 
 def get_testcase_number(labels):

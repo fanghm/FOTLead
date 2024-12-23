@@ -40,7 +40,6 @@ def ajax_update_item_links(request, fid):
 
     if request.method == 'POST':
         try:
-            # 解析 JSON 数据
             data = json.loads(request.body)
             data.pop('dirty', None)  # remove dirty flag
 
