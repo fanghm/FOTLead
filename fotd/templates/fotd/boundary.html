@@ -35,7 +35,7 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
 {% endblock %}
 
-{% block script %} 
+{% block script %}
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
 {% endblock %}
 
@@ -94,6 +94,7 @@
             <option value="25R1">25R1</option>
             <option value="25R2">25R2</option>
             <option value="25R3">25R3</option>
+            <option value="26R1">26R1</option>
             <option value="NA" selected>Select a release...</option>
         </select>
     </div>
@@ -123,13 +124,13 @@
             var lines = copiedText.split(/\s+/).filter(function(line) {
                 return line.trim() != '';
             });
-        
+
             if (lines.length > 13) {
                 var linesToCombine = lines.length - 12;
                 var combinedLine = lines.slice(0, linesToCombine).join(' ');
                 lines = [combinedLine].concat(lines.slice(linesToCombine));
             }
-        
+
             console.log(lines);
             return lines;
         }
@@ -137,7 +138,7 @@
         $('#copiedText').on('input', function() {
             var copiedText = $(this).val();
             var lines = processLines(copiedText);
-                
+
             if (lines.length == 13) {
                 $('#fieldInfo').html('The text is correctly parsed into below table. <br>Click "Import" to save the data.');
 
@@ -146,16 +147,16 @@
                 for (var i = 0; i < fields.length; i++) {
                     data[fields[i]] = lines[i];
                 }
-            
+
                 var table = $('#parsedData');
                 table.empty();
-            
+
                 var header = $('<tr>');
                 for (var field in data) {
                     header.append($('<th>').text(field));
                 }
                 table.append(header);
-            
+
                 var row = $('<tr>');
                 for (var field in data) {
                     row.append($('<td>').text(data[field]));

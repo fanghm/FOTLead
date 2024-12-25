@@ -1,10 +1,10 @@
 // Variable to keep track of the currently opened row, for hiding the child row only
 var currentlyOpenedRow = null;
 
-//var LinkCache = JSON.parse("{{ item_links|escapejs }}");
+//var LinkCache = JSON.parse("{{ item_links|escapejs }}") - defined in backlog.html
 if (LinkCache === null) {
     // console.log('No link data in db, initialize an empty object.');
-    LinkCache = {};
+    LinkCache = {'dirty': false};
 }
 
 function updateDatabaseViaAJAX() {
@@ -16,7 +16,7 @@ function updateDatabaseViaAJAX() {
         data: JSON.stringify(LinkCache),
         contentType: "application/json",
         success: function(response) {
-            LinkCache['dirty'] = false; // reset the dirty flag to avoid multiple updates
+            LinkCache['dirty'] = false; // reset the dirty flag to avoid duplicate updates
             console.log("Links updated successfully:", response);
         },
         error: function(error) {
@@ -43,6 +43,32 @@ document.addEventListener('visibilitychange', function() {
 });
 
 $(document).ready(function() {
+    function timeSince(date) {
+        const now = new Date();
+        const secondsPast = Math.floor((now - date) / 1000);
+
+        if (secondsPast < 60) {
+            return `${secondsPast} second${secondsPast > 1 ? 's' : ''} ago`;
+        }
+        if (secondsPast < 3600) {
+            const minutes = Math.floor(secondsPast / 60);
+            return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+        }
+        if (secondsPast < 86400) {
+            const hours = Math.floor(secondsPast / 3600);
+            return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+        }
+        if (secondsPast < 2592000) {
+            const days = Math.floor(secondsPast / 86400);
+            return `${days} day${days !== 1 ? 's' : ''} ago`;
+        }
+        if (secondsPast < 31536000) {
+            const months = Math.floor(secondsPast / 2592000);
+            return `${months} month${months !== 1 ? 's' : ''} ago`;
+        }
+        const years = Math.floor(secondsPast / 31536000);
+        return `${years} year${years !== 1 ? 's' : ''} ago`;
+    }
 
     function escapeHtml(text) {
         if (!text) return text;
@@ -55,35 +81,43 @@ $(document).ready(function() {
 
   // Formatting function for row details - modify as you need
   function format(linkData) {
-    var links = linkData["links"];
-    var rep = linkData["rep"];
-    var link_prefix = "https://jiradc.ext.net.nokia.com/browse/";
+    let links = linkData["links"];
+    let link_prefix = "https://jiradc.ext.net.nokia.com/browse/";
 
-    var queryTime = "";
+    let queryTime = "";
     if ("timestamp" in linkData && linkData["timestamp"]) {
-        queryTime = new Date(linkData["timestamp"]).toLocaleString();
-        queryTime += ": ";
+        let date = new Date(linkData["timestamp"]);
+        queryTime = timeSince(date);
+        queryTime += "&nbsp;";
     }
+
+    let refreshHtml = `
+            ◴ Data Time: ${queryTime}
+            <button class="refreshLinks">↻ Refresh</button>
+            <input type="checkbox" id="showDoneChildItems"> Show done items
+    `;
 
     // if links is empty, return directly
     if (links && links.length === 0) {
-        return `<ul>
-                    <li>
-                        ${queryTime}Child item not yet created, or all of them are done.
-                        <a id="refreshLinks2" class="refreshLinks" href="#">Refresh</a>
-                    </li>
-                </ul>`;
+        return `<div style="padding-left: 40px;">
+                    ⨂ Child item not created, or all are closed.<br>
+                    ${refreshHtml}
+                </div>`;
     }
 
-    var link_details = links.map(link => {
+    let link_details = links.map(link => {
         // Calculate Total_Effort
-        var total_effort = (link.Logged_Effort || 0) + (link.Time_Remaining || 0);
+        let total_effort = (link.Logged_Effort || 0) + (link.Time_Remaining || 0);
 
         // Change Status to "Delayed" if End_FB > RC_FB
-        var status = link.End_FB > link.RC_FB ? "Delayed" : link.Status;
+        let status = link.Status;
+        if (link.RC_FB && link.End_FB && link.End_FB > link.RC_FB) {
+            status = "Delayed";
+            var status_cls = "delayed";
+        }
 
         // Concatenate the last four fields into a "Comment" column
-        var comment = [link.Team, link.Risk_Status, link.FB_Committed_Status, link.TC_Number]
+        let comment = [link.Team, link.Risk_Status, link.FB_Committed_Status, link.TC_Number]
             .filter(field => field && field.trim() !== "")
             .join(", ");
 
@@ -91,7 +125,7 @@ $(document).ready(function() {
                     <td>${link.Relationship}</td>
                     <td>${link.Item_Type}</td>
                     <td><a href="${link_prefix}${link.Key}" title="${escapeHtml(link.Summary)}" target="_blank">${link.Key}</a></td>
-                    <td>${status}</td>
+                    <td class="${status_cls}">${status}</td>
                     <td>${link.Assignee}</td>
                     <td>${link.Start_FB}</td>
                     <td>${link.End_FB}</td>
@@ -102,6 +136,7 @@ $(document).ready(function() {
     });
 
     let linkDetailsHtml = link_details.join('');
+    let rep = linkData["rep"];
     if (rep) {
         linkDetailsHtml += `<tr>
                               <td></td>
@@ -111,11 +146,8 @@ $(document).ready(function() {
     }
 
     linkDetailsHtml += `<tr>
-                            <td colspan="10">
-                                Query Time: ${queryTime}
-                                <a id="refreshLinks1" class="refreshLinks" href="#">
-                                    <img src="${RefreshImageUrl}" alt="Refresh" width="18" height="18" title="Refresh">
-                                </a>
+                            <td colspan="10" style="text-align: right;">
+                                ${refreshHtml}
                             </td>
                         </tr>`;
 
@@ -169,7 +201,7 @@ $(document).ready(function() {
           $('#backlog-table').css('pointer-events', 'none');
 
           // Check if details are already cached
-          if (key in LinkCache && 'links' in LinkCache[key] && LinkCache[key].links.length > 0) {
+          if (key in LinkCache && 'links' in LinkCache[key]) {
             console.log('Use cached link details for ' + key);
             row.child(format(LinkCache[key])).show();
             currentlyOpenedRow = row;
@@ -247,12 +279,20 @@ function refreshLinkDetails(tr) {
 }
 
   // use event delegation to catch the click event on the dynamically added link
-  $(document).on('click', '#refreshLinks1', function(e) {
+  $(document).on('click', '.refreshLinks', function(e) {
       console.log('Refresh link details');
       e.preventDefault();
 
+      let tr = null;
       let clicked = $(this);
-      let tr = clicked.closest('tr').closest('td').closest('tr').prevAll('.dt-hasChild').first();
+
+      // distinguish between the two types of rows
+      if (clicked.closest('td').attr('colspan') === '10') {
+        tr = clicked.closest('tr').closest('td').closest('tr').prevAll('.dt-hasChild').first();
+      } else {
+        tr = clicked.closest('tr').prevAll('.dt-hasChild').first();
+      }
+
       if (tr.length === 0) {
             console.error('No parent <tr> with class "dt-hasChild" found.');
             return;
@@ -261,17 +301,4 @@ function refreshLinkDetails(tr) {
         refreshLinkDetails(tr);
     });
 
-    $(document).on('click', '#refreshLinks2', function(e) {
-        console.log('No links currently, refresh to see if any update');
-        e.preventDefault();
-
-        let clicked = $(this);
-        let tr = clicked.closest('tr').prevAll('.dt-hasChild').first();
-        if (tr.length === 0) {
-              console.error('No parent <tr> with class "dt-hasChild" found.');
-              return;
-          }
-
-          refreshLinkDetails(tr);
-      });
 });

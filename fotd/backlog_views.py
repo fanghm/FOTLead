@@ -8,7 +8,7 @@ from .models import BacklogQuery
 from .myjira import get_item_links
 
 
-def fetch_item_links(id, include_done=False):
+def _fetch_item_links(id, include_done=False):
     """
     Fetch the links of a CA item from JIRA
     """
@@ -21,7 +21,7 @@ def ajax_get_item_links(request, id):
     """
     Get the links of a CA item from JIRA
     """
-    links = fetch_item_links(id)
+    links = _fetch_item_links(id)
     return JsonResponse(links, safe=False)
 
 
@@ -30,13 +30,13 @@ def ajax_get_all_links(request, id):
     """
     Get all the links of a CA item from JIRA, including the closed ones
     """
-    links = fetch_item_links(id, include_done=True)
+    links = _fetch_item_links(id, include_done=True)
     return JsonResponse(links, safe=False)
 
 
 @csrf_exempt
 def ajax_update_item_links(request, fid):
-    print(f'ajax_update_item_links: {fid}')
+    print(f'Saving link data for feature {fid}')
 
     if request.method == 'POST':
         try:
