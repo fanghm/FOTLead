@@ -161,7 +161,7 @@ LDAP_AUTH_URL = "ldap://{host}:{port}".format(  # or ldaps
 )
 
 AUTH_USERNAME = "qwn783"
-AUTH_PASSWORD = "xxx@yyy"
+AUTH_PASSWORD = "Bemy1self!"
 
 # ldapsearch -x -H ldap://10.159.212.221
 #   -b "ou=users,ou=UserAccounts,dc=nsn-intra,dc=net" "(sAMAccountName=yourUsername)"

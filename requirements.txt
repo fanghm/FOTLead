@@ -7,6 +7,7 @@ django-crispy-forms==2.3
 crispy-bootstrap4==2024.1
 django-select2==8.2.1
 jira==3.8.0
+requests=2.32.3
 
 # PostgreSQL: psycopg2 or psycopg2-binary for Windows
 # LDAP authentication: django-python3-ldap

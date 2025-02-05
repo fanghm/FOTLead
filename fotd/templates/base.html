@@ -1,5 +1,6 @@
 {% load static %}
-{% url 'fotd:fb' yy=24 as fb_url %}
+{% now "Y"  as current_year %}
+{% url 'fotd:fb' yy=current_year as fb_url %}
 <!DOCTYPE html>
 <html lang="en">
   <head>

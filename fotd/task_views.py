@@ -81,9 +81,10 @@ def ajax_task_update(request, tid):
                 ),
             )
 
-            return JsonResponse(
-                {'status': 'success', 'message': 'Task updated successfully'}
-            )
+        return JsonResponse(
+            {'status': 'success', 'message': 'Task updated successfully'}
+        )
+
     else:
         return JsonResponse({'status': 'fail', 'message': 'Invalid request'})
 

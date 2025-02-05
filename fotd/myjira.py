@@ -180,7 +180,7 @@ def get_item_links(url, include_done=False, is_testing=False):
         print(f"Exception: no links for {json_issue['key']}!")
         return []
 
-    link_status = ["Done", "Obsolete"] if include_done else ["Obsolete"]
+    link_status_exclude = ["Obsolete"] if include_done else ["Done", "Obsolete"]
     is_testing = (
         issue_dict["Activity_Type"] in ["System Testing", "Entity Testing"]
         and issue_dict["Start_FB"]
@@ -194,7 +194,7 @@ def get_item_links(url, include_done=False, is_testing=False):
         # mostly CA items
         if "inwardIssue" in link and link["inwardIssue"]["fields"]["status"][
             "name"
-        ] not in (link_status):
+        ] not in (link_status_exclude):
             # skip "is child of" EI item
             if link["inwardIssue"]["fields"]["issuetype"]["name"] == "Entity Item":
                 continue
@@ -207,17 +207,19 @@ def get_item_links(url, include_done=False, is_testing=False):
         # mostly epics, "is primary of" CA item
         elif "outwardIssue" in link and link["outwardIssue"]["fields"]["status"][
             "name"
-        ] not in (link_status):
+        ] not in (link_status_exclude):
             link_dict = fetch_json_data(link["outwardIssue"]["self"])
             link_dict["Relationship"] = link["type"]["outward"]
 
             if (
                 is_testing
                 and link_dict["Item_Type"] == "Epic"
-                and "Labels" in link_dict
+                # and "Labels" in link_dict
             ):
                 # print(f"Found testing Epic: {link_dict}")
-                link_dict["TC_Number"] = get_testcase_number(link_dict["Labels"])
+                link_dict["TC_Number"] = get_testcase_number(
+                    link_dict.get("Labels", "")
+                )
                 epic_list.append(link_dict["Key"])
 
             link_list.append(link_dict)
@@ -340,6 +342,7 @@ def _queryJira(
     for index, field in enumerate(fields_to_display):
         print(f"{index}: {field}")
 
+    print("Start earliest: %s, End latest: %s" % (start_earliest, end_latest))
     return BacklogQueryResult(
         backlog_items=result,
         display_fields=fields_to_display,

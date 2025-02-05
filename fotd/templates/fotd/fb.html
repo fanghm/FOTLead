@@ -58,23 +58,42 @@
   <script>
   $(function() {
     var startDate, endDate;
-  
+
+    // get the start and end date of the current sprint
+    var currentSprintRow = $(".highlight");
+    if (currentSprintRow.length > 0) {
+      startDate = new Date(currentSprintRow.find("td.date").first().data("date"));
+      endDate = new Date(currentSprintRow.find("td.date").last().data("date"));
+
+      // initialize the datepicker with the current sprint dates
+      $("#datepicker").datepicker({
+        format: 'yyyy/mm/dd',
+        beforeShowDay: function(date) {
+          if (startDate && endDate) {
+            return [(date >= startDate && date <= endDate), 'highlight', ''];
+          } else {
+            return [true, '', ''];
+          }
+        }
+      }).datepicker("setDate", startDate).datepicker("show");
+    }
+
     $(".date").click(function() {
       var dateStr = $(this).data("date");
       console.log(dateStr);
-  
-      // 如果点击的是开始日期，那么更新 startDate
+
+      // if clicked on start date, then update startDate
       if ($(this).is(':nth-child(2)')) {
         startDate = new Date(dateStr);
         endDate = new Date(new Date(startDate).setDate(startDate.getDate() + 13));
       }
-  
-      // 如果点击的是结束日期，那么更新 endDate
+
+      // if clicked on end date, then update endDate
       if ($(this).is(':nth-child(3)')) {
         endDate = new Date(dateStr);
         startDate = new Date(new Date(endDate).setDate(endDate.getDate() - 13));
       }
-  
+
       $("#datepicker").datepicker("destroy").datepicker({
         format: 'yyyy/mm/dd',
         beforeShowDay: function(date) {

@@ -80,7 +80,7 @@ $(document).ready(function() {
       }
 
   // Formatting function for row details - modify as you need
-  function format(linkData) {
+  function format(linkData, showDoneItems = false) {
     let links = linkData["links"];
     let link_prefix = "https://jiradc.ext.net.nokia.com/browse/";
 
@@ -88,13 +88,13 @@ $(document).ready(function() {
     if ("timestamp" in linkData && linkData["timestamp"]) {
         let date = new Date(linkData["timestamp"]);
         queryTime = timeSince(date);
-        queryTime += "&nbsp;";
+        queryTime += '<span class="divider">|</span>';
     }
 
     let refreshHtml = `
             ◴ Data Time: ${queryTime}
             <button class="refreshLinks">↻ Refresh</button>
-            <input type="checkbox" id="showDoneChildItems"> Show done items
+            <input type="checkbox" id="showDoneChildItems" ${showDoneItems ? 'checked' : ''}> Show done items
     `;
 
     // if links is empty, return directly
@@ -211,11 +211,27 @@ $(document).ready(function() {
             $('#backlog-table').css('pointer-events', 'auto');
           } else {
             console.log('Request link details via AJAX for ' + key);
+
+            let progressValue = 0;
+            let progressbar = tr.find('.progress-bar');
+            if (progressbar.length > 0) {
+                progressValue = progressbar.attr('aria-valuenow');
+                console.log('Progress Value:', progressValue);
+            } else {
+                console.error('Progress bar not found in the row, maybe it\'s hidden.');
+            }
+
+            // done items are shown if progress is 100%
+            let showDoneItems = (progressValue > 99.99);
+
             $.ajax({
                 url: `/ajax_get_item_links/${id}/`,
                 method: 'GET',
+                data: {
+                    showDoneItems: showDoneItems
+                },
                 success: function(linkData) {
-                    row.child(format(linkData)).show();
+                    row.child(format(linkData, showDoneItems)).show();
                     currentlyOpenedRow = row;
 
                     // Cache the details

@@ -12,6 +12,10 @@ def _fetch_item_links(id, include_done=False):
     """
     Fetch the links of a CA item from JIRA
     """
+    print(
+        f'Fetching links for item {id}'
+        + (' (including done items)' if include_done else '')
+    )
     url = 'https://jiradc.ext.net.nokia.com/rest/api/2/issue/{}'.format(id)
     return get_item_links(url, include_done=include_done)
 
@@ -21,7 +25,8 @@ def ajax_get_item_links(request, id):
     """
     Get the links of a CA item from JIRA
     """
-    links = _fetch_item_links(id)
+    include_done = request.GET.get('showDoneItems', 'false').lower() == 'true'
+    links = _fetch_item_links(id, include_done=include_done)
     return JsonResponse(links, safe=False)
 
 

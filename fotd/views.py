@@ -12,7 +12,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from jira import JIRAError
 
-from .data import BacklogQueryResult
 from .mailer import send_email
 from .models import (
     BacklogQuery,
@@ -135,6 +134,8 @@ def login(request):
 
 # yy: year in 2 digits, e.g. 22 for 2022
 def fb(request, yy):
+    if len(yy) == 4 and yy.isdigit():
+        yy = yy[2:]
     sprints = Sprint.objects.filter(fb__startswith='FB' + yy).order_by('fb')
     context = {'sprints': sprints, 'today': date.today().strftime('%Y-%m-%d')}
     return render(request, 'fotd/fb.html', context)
@@ -283,6 +284,7 @@ def check_exec_issue(result, current_fb):
 
     return
 
+
 def detect_changes(query, result):
     changes = ''
     new_keys = [
@@ -303,12 +305,16 @@ def detect_changes(query, result):
 
     if changed_items:
         endfb_changed_str = ";".join(
-            [f"{key}: {value['previous']}->{value['current']}" for key, value in changed_items.items()]
+            [
+                f"{key}: {value['previous']}->{value['current']}"
+                for key, value in changed_items.items()
+            ]
         )
         print(f"End_FB changes: {endfb_changed_str}")
         changes += f"EndFB changes: {endfb_changed_str}"
 
     return (new_keys, changed_items, changes)
+
 
 def backlog(request, fid):
     first_query = False
@@ -325,7 +331,7 @@ def backlog(request, fid):
     display_fields = None
     new_keys = []
     changed_items = {}
-    max_results = 200   # TODO: what if more than 200 items?
+    max_results = MAX_RESULT = 200
 
     query = BacklogQuery.objects.filter(feature_id=fid).first()
     if query is None:
@@ -340,8 +346,8 @@ def backlog(request, fid):
         new_keys = query.new_keys
         changed_items = query.changed_items
 
-        # for refreshed query, we need to get more items to detect changes
-        max_results = len(result) + 10
+        if len(result) % MAX_RESULT == 0:
+            max_results = len(result) * 2
 
     print(f"{fid}: query_done={query_done}, include_done={include_done}")
     if refresh_query or first_query or (query_done != include_done):
@@ -355,7 +361,7 @@ def backlog(request, fid):
             display_fields = query_result.display_fields
 
         except JIRAError as e:
-            error_message = (f"Failed to connect to JIRA: {e}")
+            error_message = f"Failed to connect to JIRA: {e}"
             messages.error(request, error_message)
             return render(request, 'fotd/error.html')
         except Exception:
@@ -376,7 +382,7 @@ def backlog(request, fid):
             update_defaults['new_keys'] = new_keys
             update_defaults['changed_items'] = changed_items
             update_defaults['changes'] = changes
-        
+
         # 使用 defaults 字典更新数据库
         try:
             BacklogQuery.objects.update_or_create(
