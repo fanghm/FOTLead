@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% load static %}
+
+{% block css %}
+  <style>
+    .no-wrap {
+      white-space: nowrap;
+    }
+
+    .progress {
+        height: 30px;
+        position: relative;
+    }
+
+    .progress-bar {
+        position: relative;
+        z-index: 1;
+    }
+
+    .progress-text {
+        position: absolute;
+        right: 10px; /* 调整文字距离进度条右边的距离 */
+        top: 50%;
+        transform: translateY(-50%);
+        white-space: nowrap; /* 防止文字换行 */
+        z-index: 2;
+        color: #000; /* 根据需要调整文字颜色 */
+        font-size: 1rem;
+    }
+
+    /* override jquery UI tooltip style */
+    .ui-tooltip {
+      width: 500px;
+      background: #f6f6f6;
+      border: 2px solid #ccc;
+      padding: 3px;
+      box-shadow: 0 0 2px rgba(0,0,0,0.1);
+      font-size: 15px !important;
+    }
+
+    .divider {
+      margin: 0 5px 0 5px;
+    }
+
+    table.dataTable {
+        border-collapse: collapse; /* 确保边框不重叠 */
+    }
+
+    table.dataTable th,
+    table.dataTable td {
+        border-right: 1px solid #ddd; /* 添加竖线 */
+    }
+
+    table.dataTable th:last-child,
+    table.dataTable td:last-child {
+        border-right: none; /* 移除最后一列的竖线 */
+    }
+    table.dataTable tfoot {
+        border-bottom: 1px solid #ddd; /* 添加底部横线 */
+    }
+    .center-align {
+        text-align: center !important; /* 使文字居中显示 */
+    }
+  </style>
+  <link rel="stylesheet" href="{% static 'fotd/jquery-ui.min.css' %}">
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.1.0/css/dataTables.dataTables.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.5.0/css/rowGroup.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.css">
+{% endblock %}
+
+{% block script %}
+  <script src="{% static 'fotd/jquery-ui.min.js' %}"></script>
+  <!-- RowGroup requires DataTables 1.11 or newer -->
+  <script type="text/javascript" src="{% static 'fotd/dataTables_2.1.0_wa.js' %}" ></script>
+
+  <script src="https://cdn.datatables.net/rowgroup/1.5.0/js/dataTables.rowGroup.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.dataTables.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.colVis.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/vfs_fonts.js"></script>
+{% endblock %}
+
+{% block nav_link %}
+<span class="divider">|</span>
+<a style="text-align: right;" href="{% url 'fotd:apod' %}">APOD</a>
+{% endblock %}
+
+{% block content %}
+<br>
+<h2 style="margin-left: 10px;">APO Dashboard</h2>
+
+<div style="display: flex; align-items: center; margin-left: 10px;">
+    {% if query_time %}
+      <div>{{ query_time|timesince }} ago</div>
+      <span class="divider">|</span>
+    {% endif %}
+
+    <a id="refreshLink" href="javascript:location.reload()">Refresh</a>
+</div>
+
+{% if not backlog_items %}
+  <p style="color: red; margin:0 10px">
+    Oops! Backlog item not found!<br>
+    Pls make sure you're querying with correct login name of the APO.<br>
+    Pls make sure you're connected to Nokia Intranet.
+  </p>
+{% else %}
+
+<div class="container-fluid">
+  <table id='apo-backlog-table' class="table stripe hover"><!--table-striped stripe -->
+    <thead>
+      <tr>
+        {% for field_name in display_fields %}
+          <th rowspan="2">{{ field_name|replace:"_, " }}</th>
+        {% endfor %}
+          <th colspan="{{display_sprints|length}}" data-dt-order="disable" class="center-align">Effort Distribution</th>
+      </tr>
+
+      <tr>
+        {% for fb in display_sprints %}
+          <th data-dt-order="disable"> {{ fb }} </th>
+        {% endfor %}
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for item in backlog_items %}
+        <tr id="{{item.Key}}" data-id="{{item.ID}}">
+          {% for field_name, field_value in item.items %}
+            {% if field_name not in display_fields %}
+              {# dont show #}
+
+              {% elif field_name == "Summary" %}
+                <td class="no-wrap">
+                    {% if field_value %}
+                        {% if field_value|length > 70 %}
+                          <a href="{{link_prefix}}{{item.Key}}" target="_blank" title="{{ field_value }}">{{ field_value|slice:":67" }}...</a>
+                        {% else %}
+                          <a href="{{link_prefix}}{{item.Key}}" target="_blank">{{ field_value|safe }}</a>
+                        {% endif %}
+                    {% endif %}
+                </td>
+
+            {% elif field_name == "Time_Remaining" %}
+              <td class="no-wrap">
+                  <div class="progress">
+                      <div class="progress-bar bg-primary" role="progressbar"
+                          style="width: {{ item.Progress }}%;" aria-valuenow="{{ item.Progress }}" aria-valuemin="0" aria-valuemax="100">
+                      </div>
+                      <span class="progress-text">{{ field_value }}</span>
+                  </div>
+              </td>
+
+            {% elif field_name == "End_FB" %}
+              {% if field_value %}
+                <td class="no-wrap {{item.tags}}" {% if item.hints %} title="{{ item.hints|safe }}" data-tooltip="{{ item.hints|safe }}" {% endif %}>
+                  {{ field_value }}
+                  {% if item.Key in changed_items %} <span style="font-size: x-small;">({{ changed_items|get_previous_end_fb:item.Key }})</span> {% endif %}
+                </td>
+              {% else %}
+                <td class="no-wrap" style="font-size: 0.7em;">(Not Set)</td>
+              {% endif %}
+
+            {% elif field_name == "RC_Status" %}
+              <td class="no-wrap rcStatusCell" style="font-size: 0.8em;">
+              {% if field_value %}
+                {{ field_value }}
+              {% else %}
+                (Not Set)
+              {% endif %}
+              </td>
+
+            {% elif field_name == "RC_FB" %}
+              {% if field_value and item.End_FB %}
+                <td class="no-wrap {% if item.End_FB > field_value %} delayed {% endif %}">{{ field_value }}</td>
+              {% else %}
+                <td class="no-wrap">{% if field_value %}{{ field_value }}{% endif %}</td>
+              {% endif %}
+
+            {% elif field_name == "Original_Estimate" or field_name == "Time_Remaining" %}
+              <td class="no-wrap">{% if field_value %}{{ field_value|rjust:"6" }}{% endif %}</td>
+
+            {% elif field_name == "Assignee" %}
+              <td class="no-wrap assigneeCell">
+                  {{ field_value|linkify }}
+                  <span class="hidden-assignee-for-copy" style="display:none;">{{ field_value }}</span>
+              </td>
+
+            {% else %}
+              <td class="no-wrap">{% if field_value %}{{ field_value|safe }}{% endif %}</td>
+            {% endif %}
+          {% endfor %}
+
+          {% for fb in display_sprints %}
+            {% if fb >= item.Start_FB and fb <= item.End_FB %}
+              <td>{{item.Effort_Per_FB}}</td>
+            {% else %}
+              <td></td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <canvas id="effortDistributionChart" width="300" height="100"></canvas>
+
+</div>
+{% endif %}
+<script type="text/javascript" src="{% static 'fotd/apo.js' %}" ></script>
+<!--script type="text/javascript" src="{% static 'fotd/childrow.js' %}"></script-->
+{% endblock %}

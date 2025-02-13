@@ -23,6 +23,15 @@
   gap: 10px; /* Adds some space between the elements */
 }
 
+.center_vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.center_vertical p {
+  margin: 1px 0; /* 调整行间距，使行与行之间的距离更近 */
+}
+
 .logo {
   margin: 0;
   padding: 0 20px;
@@ -86,6 +95,3 @@ h2 {
   padding: 10px;
   margin-top: 0;
 }
-
-
-

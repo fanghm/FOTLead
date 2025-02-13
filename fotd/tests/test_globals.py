@@ -5,7 +5,12 @@ import time
 from django.core.cache import cache
 from django.test import TestCase
 
-from fotd.globals import _deduce_fb_date, _get_fb_end_date, _get_fb_start_date
+from fotd.globals import (
+    _deduce_fb_date,
+    _get_fb_end_date,
+    _get_fb_start_date,
+    _get_remaining_fb_count,
+)
 from fotd.models import Sprint
 
 
@@ -72,3 +77,12 @@ class GlobalsTestCase(TestCase):
         self.assertIsNotNone(cache.get('fb_dict'))
         time.sleep(2)
         self.assertIsNone(cache.get('fb_dict'))
+
+    def test_get_remaining_fb_count(self):
+        # Test cases for _get_remaining_fb_count
+        self.assertEqual(_get_remaining_fb_count('2301', '2305', '2302'), 4)
+        self.assertEqual(_get_remaining_fb_count('2301', '2305', '2305'), 1)
+        self.assertEqual(_get_remaining_fb_count('2301', '2305', '2306'), 1)
+        self.assertEqual(_get_remaining_fb_count('2301', '2305', '2225'), 5)
+        self.assertEqual(_get_remaining_fb_count('2301', '2301', '2301'), 1)
+        self.assertEqual(_get_remaining_fb_count('2301', '2301', '2225'), 1)

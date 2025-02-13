@@ -1,11 +1,12 @@
 from django.contrib.auth.views import LoginView
 from django.urls import path
 
-from . import backlog_views, task_views, team_views, views
+from . import apo_views, backlog_views, task_views, team_views, views
 
 app_name = 'fotd'
 urlpatterns = [
     path('', views.index, name='index'),
+    path('apod/', apo_views.apod, name='apod'),
     path('login/', LoginView.as_view(template_name='admin/login.html'), name='login'),
     path('fb/<yy>/', views.fb, name='fb'),
     path('detail/<fid>/', views.detail, name='detail'),

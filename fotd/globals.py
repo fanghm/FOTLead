@@ -73,3 +73,71 @@ def _get_fb_end_date(fb):
     else:
         print(f'Warning: FB {fb} not found in db cache')
         return _deduce_fb_date(fb, start=False)
+
+
+def _get_fbs(start_fb, end_fb):
+    """
+    Get a list of FBs between start_fb and end_fb, inclusive
+    start_fb, end_fb in the string format without "FB" prefix, eg: '2325', '2401'
+    """
+
+    if not (start_fb and end_fb):
+        return []
+    elif start_fb >= end_fb:
+        return [end_fb]
+    else:
+        fbs = [start_fb]
+        start = int(start_fb)
+        while start < int(end_fb):
+            if start % 100 == 26:  # 26 fbs in each year
+                start = (int(start / 100) + 1) * 100 + 1
+            else:
+                start += 1
+            fbs.append(str(start))
+        return fbs
+
+
+def _get_fb_count(start_fb, end_fb):
+    """
+    Get the number of FBs between start_fb and end_fb, inclusive
+    start_fb, end_fb in the string format without "FB" prefix, eg: '2325', '2401'
+    NOTE: if start_fb is greater than end_fb, it will return 1
+    """
+
+    if not (start_fb and end_fb):
+        return 0
+    elif start_fb > end_fb:
+        print(
+            "WARNING: Start FB ({}) is greater than end FB ({})".format(
+                start_fb, end_fb
+            )
+        )
+        return 1
+    elif start_fb == end_fb:
+        return 1
+    else:
+        start_year = int(start_fb[:2])
+        start_num = int(start_fb[2:])
+        end_year = int(end_fb[:2])
+        end_num = int(end_fb[2:])
+
+        # Calculate the number of FBs in the start year
+        fb_count_start_year = 26 - start_num + 1
+
+        # Calculate the number of FBs in the end year
+        fb_count_end_year = end_num
+
+        # Calculate the number of FBs in the years between start and end
+        fb_count_between_years = (end_year - start_year - 1) * 26
+
+        # Total FB count
+        total_fb_count = (
+            fb_count_start_year + fb_count_between_years + fb_count_end_year
+        )
+
+        return total_fb_count
+
+
+def _get_remaining_fb_count(start_fb, end_fb, current_fb):
+    remaining_fb_count = _get_fb_count(max(current_fb, start_fb), end_fb)
+    return remaining_fb_count

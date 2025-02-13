@@ -57,10 +57,12 @@
       {% endblock %}
 
       <hr>
-      <footer class="center">
-        <p>&copy; 2024 FOTL Dashboard
+      <footer class="center_vertical">
+        <p>&copy; 2024 FOTL Dashboard</p>
+        <p><a href="{% url 'fotd:apod' %}" target="_blank">APO Dashboard</a>
           | <a href="{% url 'tracker:issue_create' %}" target="_blank">Issue Tracker</a>
-          | <a href="{% url 'link:link_list' %}" target="_blank">Links</a></p>
+          | <a href="{% url 'link:link_list' %}" target="_blank">Links</a>
+        </p>
       </footer>
     </div>
 

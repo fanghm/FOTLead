@@ -1,5 +1,6 @@
 import datetime
 import getpass
+import json
 import re
 import traceback
 import urllib.parse
@@ -10,7 +11,36 @@ from django.conf import settings
 from jira import JIRA, JIRAError
 
 from .data import BacklogQueryResult
-from .globals import _get_fb_end_date, _get_fb_start_date
+from .globals import _get_fb_end_date, _get_fb_start_date, _get_remaining_fb_count
+
+BASE_URL = "https://jiradc.ext.net.nokia.com/rest/api/2"
+HEADERS = {
+    "Authorization": "Bearer ODk1MDkzMzM5NDQxOnJhJcfSGPfSKjTAKKAJxnei+WJG",
+    "Content-Type": "application/json",
+}
+
+
+def send_request(method, endpoint, data=None):
+    print(f"Sending PAT request to {endpoint}")
+    url = f"{BASE_URL}/{endpoint}"
+    try:
+        if method == "POST":
+            response = requests.post(url, headers=HEADERS, data=json.dumps(data))
+        elif method == "GET":
+            response = requests.get(url, headers=HEADERS)
+        else:
+            raise ValueError("Unsupported HTTP method")
+
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"Request error occurred: {req_err}")
+    except json.JSONDecodeError:
+        print("Response content is not in JSON format")
+    return None
+
 
 JIRA_TEXT2 = "customfield_38727"
 JIRA_RISK_STATUS = "customfield_38754"
@@ -72,7 +102,7 @@ def extract_issue_fields(issue, field_dict, save_none_value=True):
             "Risk_Status",
         ):
             issue_dict[field_name] = value["value"]
-        elif field_name in ("Release"):
+        elif field_name in ("Release", "PSR"):
             issue_dict[field_name] = value[0]["value"]
         elif field_name in ("Assignee"):
             issue_dict[field_name] = value["displayName"]
@@ -83,17 +113,19 @@ def extract_issue_fields(issue, field_dict, save_none_value=True):
     return issue_dict
 
 
-def calculate_progress(issue_dict, total_logged, total_remaining):
-    logged_effort = issue_dict.get("Logged_Effort")
-    if not logged_effort:
-        logged_effort = 0
-    logged = float(logged_effort)
+def calculate_effort_and_progress(
+    issue_dict, total_logged, total_remaining, current_fb=None
+):
+    """
+    Calculate the total logged effort, total remaining effort, and progress
+    """
+
+    logged_effort = issue_dict.get("Logged_Effort", 0)
+    logged = float(logged_effort) if logged_effort is not None else 0.0
     total_logged += logged
 
-    time_remaining = issue_dict.get("Time_Remaining")
-    if not time_remaining:
-        time_remaining = 0
-    remaining = float(time_remaining)
+    time_remaining = issue_dict.get("Time_Remaining", 0)
+    remaining = float(time_remaining) if time_remaining is not None else 0.0
     total_remaining += remaining
 
     issue_dict["Total_Effort"] = logged + remaining
@@ -102,6 +134,12 @@ def calculate_progress(issue_dict, total_logged, total_remaining):
         if issue_dict["Total_Effort"] > 0
         else 0
     )
+
+    if current_fb:
+        remaining_fb = _get_remaining_fb_count(
+            issue_dict["Start_FB"], issue_dict["End_FB"], current_fb
+        )
+        issue_dict["Effort_Per_FB"] = round(remaining / remaining_fb)
 
     return total_logged, total_remaining
 
@@ -204,14 +242,18 @@ def get_item_links(url, include_done=False, is_testing=False):
             link_dict["Relationship"] = link["type"]["inward"]
             link_list.append(link_dict)
 
-        # mostly epics, "is primary of" CA item
+        # mostly epics, and "is primary of" CA items
         elif "outwardIssue" in link and link["outwardIssue"]["fields"]["status"][
             "name"
         ] not in (link_status_exclude):
             link_dict = fetch_json_data(link["outwardIssue"]["self"])
             link_dict["Relationship"] = link["type"]["outward"]
 
-            if (
+            if link_dict["Item_Type"] == "Competence Area":
+                # TODO: No CA info here, need to read from link["outwardIssue"]["self"]
+                # link_dict["Comment"] = get_CA_info(link["outwardIssue"]["self"])
+                pass
+            elif (
                 is_testing
                 and link_dict["Item_Type"] == "Epic"
                 # and "Labels" in link_dict
@@ -268,16 +310,30 @@ def get_entity_item_summary(issue):
 
 # TODO: for items with secondary links, get the actual logged effort and progress info
 def _queryJira(
-    jql_str, field_dict, fields_to_hide, include_done, max_results=20, start_at=0
+    jql_str,
+    field_dict,
+    fields_to_hide,
+    include_done,
+    check_links=True,
+    max_results=200,
+    current_fb=None,
 ):
     jira = _initJira()
     json_result = jira.search_issues(
         jql_str,
-        start_at,
+        0,
         max_results,
         fields=list(field_dict.values()),
         json_result=True,
     )
+
+    # query = {
+    #     "jql": jql_str,
+    #     "startAt": 0,
+    #     "maxResults": max_results,
+    #     "fields": list(field_dict.values())
+    # }
+    # json_result = send_request("POST", "search", query)
 
     result = []
     start_earliest = end_latest = None
@@ -285,16 +341,15 @@ def _queryJira(
     rfc_count = committed_count = 0
     total_logged = total_remaining = 0
 
-    total_count = json_result["total"]
+    total_count = json_result.get("total", 0)
     print(f"Total count: {total_count}")
 
-    for issue in json_result["issues"]:
+    for issue in json_result.get("issues", []):
         issue_dict = extract_issue_fields(issue, field_dict)
         result.append(issue_dict)
 
-        # calc progress and total logged/remaining efforts for statistics
-        total_logged, total_remaining = calculate_progress(
-            issue_dict, total_logged, total_remaining
+        total_logged, total_remaining = calculate_effort_and_progress(
+            issue_dict, total_logged, total_remaining, current_fb
         )
 
         # Get SI ID from CA's Item_ID like 'CB011098-SR-A-CP2_RAN_SysSpec'
@@ -306,9 +361,10 @@ def _queryJira(
             print(f"Exception: malformatted Item ID - {issue_dict['Item_ID']}")
 
         # Get EI from issue link
-        issue_dict["Entity_Item"] = "[{}] {}".format(
-            issue_dict["Release"], get_entity_item_summary(issue)
-        )
+        if check_links:
+            issue_dict["Entity_Item"] = "[{}] {}".format(
+                issue_dict["Release"], get_entity_item_summary(issue)
+            )
 
         issue_dict.pop("issuelinks", None)  # too much text
         issue_dict.pop("Item_ID", None)
@@ -353,6 +409,65 @@ def _queryJira(
         total_logged=total_logged,
         total_remaining=total_remaining,
         include_done=include_done,
+    )
+
+
+def jira_get_apo_backlog(current_fb, apo_login_name="cqt437"):
+    print(f"jira_get_apo_backlog: {apo_login_name}")
+    field_dict = {
+        # 0: Key
+        #
+        # 1-5
+        "Summary": "summary",
+        "PSR": "customfield_38724",  # value
+        "RC_Status": "customfield_38728",
+        "Start_FB": "customfield_38694",
+        "End_FB": "customfield_38693",
+        "Time_Remaining": "customfield_43291",
+        #
+        # hidden fields
+        "Competence_Area": "customfield_38690",
+        "Activity_Type": "customfield_38750",
+        "Assignee": "assignee",
+        "Item_ID": "customfield_38702",
+        "RC_FB": "customfield_43490",
+        "FB_Committed_Status": "customfield_38758",  # value
+        "Stretch_Goal_Reason": "customfield_43893",  # value
+        "Risk_Status": "customfield_38754",  # value
+        "Risk_Details": "customfield_38435",
+        "Logged_Effort": "customfield_43290",
+        # mandatory to get EI summary
+        # "issuelinks": "issuelinks",
+    }
+
+    fields_to_hide = [
+        "ID",
+        "Assignee_Email",
+        "Effort_Per_FB",  # calculated field
+        "Competence_Area",
+        "Activity_Type",
+        "Assignee",
+        "Item_ID",
+        "RC_FB",
+        "FB_Committed_Status",
+        "Stretch_Goal_Reason",
+        "Risk_Status",
+        "Risk_Details",
+        "Logged_Effort",
+        "Progress",
+        "System_Item",
+        "Entity_Item",
+        # "Effort_Per_FB",  # calculated field
+    ]
+
+    jql_str = (
+        'issuetype = "Competence Area" AND assignee in ({apo_login_name}) '
+        'and status not in (done, obsolete) and "Σ Time Remaining (h)" > 0 '
+        'order by "Planned System Release" '
+    ).format(apo_login_name=apo_login_name)
+
+    return _queryJira(
+        jql_str, field_dict, fields_to_hide, False, False, 300, current_fb
     )
 
 
@@ -407,6 +522,7 @@ def jira_get_ca_items(fid, max_results, include_done=False):
         "Risk_Details",
         "Logged_Effort",
         "Release",
+        "Effort_Per_FB",  # calculated field
     ]
 
     status_filter = "status not in (done, obsolete)"
@@ -419,7 +535,9 @@ def jira_get_ca_items(fid, max_results, include_done=False):
         'AND {status_filter} order by "Item ID"'
     ).format(fid=fid, status_filter=status_filter)
 
-    return _queryJira(jql_str, field_dict, fields_to_hide, include_done, max_results)
+    return _queryJira(
+        jql_str, field_dict, fields_to_hide, include_done, True, max_results
+    )
 
 
 def jira_get_text2(fid):
