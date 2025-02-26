@@ -7,11 +7,11 @@ from .globals import _get_fbs
 from .myjira import jira_get_apo_backlog
 
 
-def apod(request):
+def apod(request, apo):
     print(f"apod: {request.session['fb']}")
     try:
         current_fb = request.session['fb'][2:]
-        query_result = jira_get_apo_backlog(current_fb)
+        query_result = jira_get_apo_backlog(current_fb, apo)
         result = query_result.backlog_items
         start_earliest = query_result.start_earliest
         end_latest = query_result.end_latest
@@ -33,6 +33,7 @@ def apod(request):
             'current_fb': current_fb,
             'link_prefix': 'https://jiradc.ext.net.nokia.com/browse/',
             'backlog_items': result,
+            'apo': apo,
         }
         return render(request, 'apod/apod.html', context)
 

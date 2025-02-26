@@ -139,5 +139,9 @@ def _get_fb_count(start_fb, end_fb):
 
 
 def _get_remaining_fb_count(start_fb, end_fb, current_fb):
+    if start_fb is None or end_fb is None or current_fb is None:
+        print(f"start_fb: {start_fb}, end_fb: {end_fb}, current_fb: {current_fb}")
+        return 1
+
     remaining_fb_count = _get_fb_count(max(current_fb, start_fb), end_fb)
     return remaining_fb_count

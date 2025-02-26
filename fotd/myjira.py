@@ -412,7 +412,7 @@ def _queryJira(
     )
 
 
-def jira_get_apo_backlog(current_fb, apo_login_name="cqt437"):
+def jira_get_apo_backlog(current_fb, apo_login_name):
     print(f"jira_get_apo_backlog: {apo_login_name}")
     field_dict = {
         # 0: Key

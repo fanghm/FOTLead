@@ -13,14 +13,14 @@
     .new_added {
       font-weight: bold;
     }
-    .duesoon, .should_start {
+    .duesoon, .postponed, .should_start {
       background-color: orange;
     }
     .delayed, .overdue, .not_fitting, .not_committed {
       background-color: red !important;
     }
     .center-align {
-      text-align: center;
+      text-align: center !important;
     }
     .row {
       display: flex;
@@ -154,20 +154,21 @@
 
             {% elif field_name == "End_FB" %}
               {% if field_value %}
-              <td class="no-wrap {{item.tags}}" {% if item.hints %} title="{{ item.hints|safe }}" data-tooltip="{{ item.hints|safe }}" {% endif %}>
-                {{ field_value }}
-                {% if item.Key in changed_items %} <span style="font-size: x-small;">({{ changed_items|get_previous_end_fb:item.Key }})</span> {% endif %}
+                <td class="no-wrap {{item.tags}}" {% if item.hints %} title="{{ item.hints|safe }}" data-tooltip="{{ item.hints|safe }}" {% endif %}>
+                  {{ field_value }}
+                  {% if item.Key in changed_items %} <span style="font-size: x-small;">({{ changed_items|get_previous_end_fb:item.Key }})</span> {% endif %}
+                </td>
               {% else %}
-              <td class="no-wrap" style="font-size: 0.7em;">(Not Set)
-                {% if item.Assignee %}
-                <select class="selectForEndFb" data-item_key="{{ item.Key }}" data-fid="{{ fid }}" data-area="{{item.Competence_Area}}" style="width: 110px;">
-                  <option value="">Action...</option>
-                  <option value="requestPlanning" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}">Send planning request</option>
-                  <option value="addTask">Add a task to track </option>
-                </select>
-                {% endif %}
+                <td class="no-wrap" style="font-size: 0.7em;">(Not Set)
+                  {% if item.Assignee %}
+                  <select class="selectForEndFb" data-item_key="{{ item.Key }}" data-fid="{{ fid }}" data-area="{{item.Competence_Area}}" style="width: 110px;">
+                    <option value="">Action...</option>
+                    <option value="requestPlanning" data-apo="{{item.Assignee}}" data-apo_email="{{item.Assignee_Email}}">Send planning request</option>
+                    <option value="addTask">Add a task to track </option>
+                  </select>
+                  {% endif %}
+                </td>
               {% endif %}
-              </td>
 
             {% elif field_name == "RC_Status" %}
               <td class="no-wrap rcStatusCell" style="font-size: 0.7em;">

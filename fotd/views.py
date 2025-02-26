@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from jira import JIRAError
 
+from .globals import _get_fbs
 from .mailer import send_email
 from .models import (
     BacklogQuery,
@@ -165,25 +166,6 @@ def _get_fb_info():
     return ('N/A', 0, 0)
 
 
-# start_fb, end_fb in the string format without "FB" prefix, eg: '2325', '2401'
-# return all the fbs in between as a string list, eg: ['2325', '2326', '2401']
-def _get_fbs(start_fb, end_fb):
-    if end_fb > end_fb:
-        return []
-    elif start_fb == end_fb:
-        return [start_fb]
-    else:
-        fbs = [start_fb]
-        start = int(start_fb)
-        while start < int(end_fb):
-            if start % 100 == 26:  # 26 fbs in each year
-                start = (int(start / 100) + 1) * 100 + 1
-            else:
-                start += 1
-            fbs.append(str(start))
-        return fbs
-
-
 def _add_tag(item, tag):
     if 'tags' not in item:
         item['tags'] = tag
@@ -296,12 +278,15 @@ def detect_changes(query, result):
         print(f"New added keys: {new_keys}")
         changes += f"New added: {new_keys}; "
 
-    changed_items = {
-        item['Key']: {'previous': old_item['End_FB'], 'current': item['End_FB']}
-        for old_item in query.backlog_items
-        for item in result
-        if item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB']
-    }
+    changed_items = {}
+    for old_item in query.backlog_items:
+        for item in result:
+            if item['Key'] == old_item['Key'] and item['End_FB'] != old_item['End_FB']:
+                changed_items[item['Key']] = {
+                    'previous': old_item['End_FB'],
+                    'current': item['End_FB'],
+                }
+                _add_tag(item, "postponed")
 
     if changed_items:
         endfb_changed_str = ";".join(
@@ -310,6 +295,7 @@ def detect_changes(query, result):
                 for key, value in changed_items.items()
             ]
         )
+
         print(f"End_FB changes: {endfb_changed_str}")
         changes += f"EndFB changes: {endfb_changed_str}"
 
