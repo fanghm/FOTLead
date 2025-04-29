@@ -15,7 +15,7 @@ from .globals import _get_fb_end_date, _get_fb_start_date, _get_remaining_fb_cou
 
 BASE_URL = "https://jiradc.ext.net.nokia.com/rest/api/2"
 HEADERS = {
-    "Authorization": "Bearer ODk1MDkzMzM5NDQxOnJhJcfSGPfSKjTAKKAJxnei+WJG",
+    "Authorization": "Bearer <AUTH_JIRA_TOKEN>",
     "Content-Type": "application/json",
 }
 
@@ -318,22 +318,22 @@ def _queryJira(
     max_results=200,
     current_fb=None,
 ):
-    jira = _initJira()
-    json_result = jira.search_issues(
-        jql_str,
-        0,
-        max_results,
-        fields=list(field_dict.values()),
-        json_result=True,
-    )
+    # jira = _initJira()
+    # json_result = jira.search_issues(
+    #     jql_str,
+    #     0,
+    #     max_results,
+    #     fields=list(field_dict.values()),
+    #     json_result=True,
+    # )
 
-    # query = {
-    #     "jql": jql_str,
-    #     "startAt": 0,
-    #     "maxResults": max_results,
-    #     "fields": list(field_dict.values())
-    # }
-    # json_result = send_request("POST", "search", query)
+    query = {
+        "jql": jql_str,
+        "startAt": 0,
+        "maxResults": max_results,
+        "fields": list(field_dict.values())
+    }
+    json_result = send_request("POST", "search", query)
 
     result = []
     start_earliest = end_latest = None
